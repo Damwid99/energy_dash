@@ -1,0 +1,10 @@
+version: '3.8'
+
+services:
+  etl_worker:
+    volumes:
+      - ./src:/app/src
+    
+  streamlit_app:
+    volumes:
+      - ./src:/app/src

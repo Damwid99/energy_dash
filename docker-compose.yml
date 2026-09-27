@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  postgres_db:
+    image: postgres:15
+    container_name: energy_postgres
+    restart: always
+    env_file:
+      - .env
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  etl_worker:
+    build: 
+      context: .
+      dockerfile: Dockerfile.etl
+    container_name: energy_etl
+    restart: always
+    env_file:
+      - .env
+    depends_on:
+      postgres_db:
+        condition: service_healthy
+
+  streamlit_app:
+    build:
+      context: .
+      dockerfile: Dockerfile.app
+    container_name: energy_streamlit
+    restart: always
+    ports:
+      - "8501:8501"
+    env_file:
+      - .env
+    depends_on:
+      postgres_db:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

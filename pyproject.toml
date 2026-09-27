@@ -1,0 +1,27 @@
+[project]
+name = "energy-dash"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Damwid99", email = "damwid@hotmail.com" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "pandas>=3.0.6",
+    "plotly>=7.1.0",
+    "psycopg2-binary>=2.9.13",
+    "python-dotenv>=1.2.3",
+    "requests>=2.34.2",
+    "schedule>=1.2.2",
+    "scikit-learn>=1.9.1",
+    "sqlalchemy>=2.1.1",
+    "streamlit>=1.64.0",
+]
+
+[project.scripts]
+energy-dash = "energy_dash:main"
+
+[build-system]
+requires = ["uv_build>=0.12.12,<0.13.0"]
+build-backend = "uv_build"
