@@ -1,0 +1,17 @@
+from sqlalchemy import Column, DateTime, Float
+
+from src.common.database import Base
+
+
+class EnergyPrice(Base):
+    __tablename__ = "energy_prices"
+
+    datetime_utc = Column(DateTime(timezone=True), primary_key=True)
+
+    fixing_1_pln_mwh = Column(Float, nullable=True)
+    fixing_2_pln_mwh = Column(Float, nullable=True)
+    rb_pln_mwh = Column(Float, nullable=True)
+    rce_pln_mwh = Column(Float, nullable=True)
+
+    def __repr__(self):
+        return f"<EnergyPrice(datetime_utc='{self.datetime_utc}', rce='{self.rce_pln_mwh}')>"
