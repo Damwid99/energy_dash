@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+.env
+.pytest_cache/
+logs/
+*.log
+.venv/
+.pixi/
+
+# Dane lokalne
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+
+.ipynb_checkpoints/
