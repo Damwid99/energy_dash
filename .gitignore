@@ -16,3 +16,4 @@ data/processed/*
 .ipynb_checkpoints/
 
 workflow.md
+developer_cycle.md
