@@ -15,11 +15,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from sqlalchemy import func
 
 from src.common.database import SessionLocal
-from src.etl.extract.pse_api import fetch_and_save_rce
+from src.etl.extract.pse_api import fetch_and_save_cen, fetch_and_save_rce
 from src.models_db.energy import EnergyPrice
 
 
-def main():
+def seed_rce():
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
@@ -48,5 +48,34 @@ def main():
         session.close()
 
 
+def seed_cen():
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+
+    parser.add_argument("--from", dest="start", help="pierwsza doba dostawy (YYYY-MM-DD)")
+    parser.add_argument("--to", dest="end", help="ostatnia doba dostawy (YYYY-MM-DD)")
+    args = parser.parse_args()
+
+    print("Rozpoczynam seedowanie danych CEN z PSE")
+
+    fetch_and_save_cen(start_date=args.start, end_date=args.end, days_back=60)
+
+    session = SessionLocal()
+    try:
+        total, first, last, cen_count = session.query(
+            func.count(EnergyPrice.datetime_utc),
+            func.min(EnergyPrice.datetime_utc),
+            func.max(EnergyPrice.datetime_utc),
+            func.count(EnergyPrice.cen_pln_mwh),
+        ).one()
+
+        print(f"\nW bazie: {total} wierszy (punkty 15-minutowe), od {first} do {last} (UTC)")
+        print(f"  z przypisaną ceną CEN: {cen_count}")
+
+    finally:
+        session.close()
+
+
 if __name__ == "__main__":
-    main()
+    seed_cen()
