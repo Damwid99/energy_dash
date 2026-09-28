@@ -1,0 +1,16 @@
+line-length = 100
+target-version = "py312"
+fix = true
+show-fixes = true
+
+[lint]
+select = ["E", "F", "I", "B", "UP", "N"]
+ignore = ["E501"]
+
+[lint.per-file-ignores]
+"src/app/pages/*" = ["F401", "F841", "I001"]
+
+[format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
