@@ -4,6 +4,7 @@ import schedule
 
 from src.common.database import Base, engine
 from src.etl.extract.pse_api import fetch_and_save_rce
+from src.etl.extract.tge_api import fetch_and_save_tge
 
 
 def init_db():
@@ -15,7 +16,8 @@ def init_db():
 
 def run_pipeline():
     print("[ETL] Uruchamianie zaplanowanego pobierania danych RCE...")
-    fetch_and_save_rce(days_back=3)
+    fetch_and_save_rce(days_back=5)
+    fetch_and_save_tge(days_back=3)
 
 
 if __name__ == "__main__":

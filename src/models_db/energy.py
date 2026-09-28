@@ -12,6 +12,8 @@ class EnergyPrice(Base):
     fixing_2_pln_mwh = Column(Float, nullable=True)
     rb_pln_mwh = Column(Float, nullable=True)
     rce_pln_mwh = Column(Float, nullable=True)
+    fixing_1_volume = Column(Float, nullable=True)
+    fixing_2_volume = Column(Float, nullable=True)
 
     def __repr__(self):
         return f"<EnergyPrice(datetime_utc='{self.datetime_utc}', rce='{self.rce_pln_mwh}')>"
