@@ -1,9 +1,7 @@
 import streamlit as st
 
-st.set_page_config(page_title="Energy Dashboard", layout="wide")
+page_home = st.Page("pages/home.py", title="Strona Główna", icon="🏠", default=True)
+page_prices = st.Page("pages/1_Analiza_cenowa.py", title="Analiza cenowa", icon="📈")
 
-st.title("⚡ Energy Market Dashboard")
-st.write(
-    "Witaj! Jeśli to widzisz, infrastruktura Streamlit z Dockera działa poprawnie."
-)
-st.write("Zaraz podłączymy tu dane z API PSE.")
+pg = st.navigation([page_home, page_prices])
+pg.run()
