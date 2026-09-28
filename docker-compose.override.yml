@@ -6,3 +6,7 @@ services:
   streamlit_app:
     volumes:
       - ./src:/app/src
+
+  postgres_db:
+    ports:
+      - "5458:5432"
