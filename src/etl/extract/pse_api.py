@@ -1,3 +1,4 @@
+import time
 from datetime import UTC, date, datetime, timedelta
 
 import requests
@@ -6,81 +7,94 @@ from src.common.database import SessionLocal
 from src.models_db.energy import EnergyPrice
 
 
-def fetch_and_save_rce(
-    start_date: str = None, end_date: str = None, days_back: int = 3
-):
+def fetch_and_save_rce(start_date: str = None, end_date: str = None, days_back: int = 3):
     """
     Pobiera dane RCE z API PSE i zapisuje/aktualizuje je w bazie.
-
-    Parametry:
-    - start_date (opcjonalny): format 'YYYY-MM-DD'
-    - end_date (opcjonalny): format 'YYYY-MM-DD'
-    - days_back: ile dni wstecz od dzisiaj pobrać, jeśli nie podano dat ręcznie
+    Działa iteracyjnie (dzień po dniu), aby ominąć limit 100 rekordów API PSE.
     """
     today = date.today()
-    if not end_date:
-        end_date = today.strftime("%Y-%m-%d")
-    if not start_date:
-        start_date = (today - timedelta(days=days_back)).strftime("%Y-%m-%d")
 
-    # Filtrujemy po właściwej kolumnie: business_date
-    filter_query = f"business_date ge '{start_date}' and business_date le '{end_date}'"
-    url = f"https://api.raporty.pse.pl/api/rce-pln?$filter={filter_query}"
+    end = date.fromisoformat(end_date) if end_date else today
+    start = date.fromisoformat(start_date) if start_date else today - timedelta(days=days_back)
+
+    if start > end:
+        print(f"Pusty zakres dat: {start} > {end}.")
+        return
+
+    days = [start + timedelta(days=i) for i in range((end - start).days + 1)]
+    print(f"Pobieranie RCE z PSE za dostawy: {start} do {end} ({len(days)} dób)...")
+
+    http = requests.Session()
+    session = SessionLocal()
+    total_saved = 0
 
     try:
-        print(f"Pobieranie danych RCE z PSE za okres: {start_date} do {end_date}...")
-        response = requests.get(url, timeout=20)
-        response.raise_for_status()
+        for d in days:
+            d_str = d.strftime("%Y-%m-%d")
+            filter_query = f"business_date eq '{d_str}'"
+            url = f"https://api.raporty.pse.pl/api/rce-pln?$filter={filter_query}"
 
-        payload = response.json()
-        data = payload.get("value", [])
+            try:
+                response = http.get(url, timeout=20)
+                response.raise_for_status()
+                data = response.json().get("value", [])
 
-        if not data:
-            print(
-                f"Brak danych zwróconych przez PSE dla zakresu {start_date} - {end_date}."
-            )
-            return
+                if not data:
+                    print(f"{d_str}: Brak danych RCE.")
+                    continue
 
-        session = SessionLocal()
-        saved_count = 0
+                parsed_rows = []
+                for row in data:
+                    utc_str = row.get("dtime_utc")
+                    rce_val = row.get("rce_pln")
+                    if not utc_str or rce_val is None:
+                        continue
 
-        for row in data:
-            # PSE zwraca gotowy znacznik czasu w UTC np. '2024-06-13 22:15:00'
-            utc_str = row.get("dtime_utc")
-            if not utc_str:
-                continue
+                    naive_dt = datetime.strptime(utc_str, "%Y-%m-%d %H:%M:%S")
+                    utc_dt = naive_dt.replace(tzinfo=UTC) - timedelta(minutes=15)
+                    rce_price = float(rce_val)
 
-            naive_dt = datetime.strptime(utc_str, "%Y-%m-%d %H:%M:%S")
-            utc_dt = naive_dt.replace(tzinfo=UTC)
+                    parsed_rows.append({"datetime_utc": utc_dt, "rce_pln_mwh": rce_price})
 
-            rce_val = row.get("rce_pln")
-            if rce_val is None:
-                continue
-            rce_price = float(rce_val)
+                if not parsed_rows:
+                    continue
 
-            # Upsert do bazy
-            existing = session.query(EnergyPrice).filter_by(datetime_utc=utc_dt).first()
-            if existing:
-                existing.rce_pln_mwh = rce_price
-            else:
-                new_price = EnergyPrice(
-                    datetime_utc=utc_dt,
-                    rce_pln_mwh=rce_price,
-                )
-                session.add(new_price)
+                day_from = parsed_rows[0]["datetime_utc"]
+                day_to = parsed_rows[-1]["datetime_utc"]
 
-            saved_count += 1
+                existing = {
+                    r.datetime_utc: r
+                    for r in session.query(EnergyPrice)
+                    .filter(
+                        EnergyPrice.datetime_utc >= day_from, EnergyPrice.datetime_utc <= day_to
+                    )
+                    .all()
+                }
 
-        session.commit()
-        print(f"Pomyślnie zaktualizowano {saved_count} punktów RCE w bazie danych.")
+                saved = 0
+                for row in parsed_rows:
+                    dt = row["datetime_utc"]
+                    record = existing.get(dt)
+                    if record is None:
+                        session.add(EnergyPrice(datetime_utc=dt, rce_pln_mwh=row["rce_pln_mwh"]))
+                    else:
+                        record.rce_pln_mwh = row["rce_pln_mwh"]
+                    saved += 1
 
-    except Exception as e:
-        print(f"Błąd podczas pobierania lub zapisu RCE: {e}")
-        if "session" in locals():
-            session.rollback()
+                session.commit()
+                total_saved += saved
+                print(f"{d_str}: zapisano {saved} kwadransów.")
+
+            except Exception as e:
+                print(f"{d_str}: BŁĄD - {e}")
+                session.rollback()
+
+            time.sleep(0.5)
+
     finally:
-        if "session" in locals():
-            session.close()
+        session.close()
+
+    print(f"Zaktualizowano łącznie {total_saved} punktów RCE w bazie danych.")
 
 
 if __name__ == "__main__":
@@ -90,11 +104,12 @@ if __name__ == "__main__":
     try:
         latest = (
             session.query(EnergyPrice)
+            .filter(EnergyPrice.rce_pln_mwh.isnot(None))
             .order_by(EnergyPrice.datetime_utc.desc())
             .limit(5)
             .all()
         )
-        print("\nOstatnie 5 rekordów w bazie:")
+        print("\nOstatnie 5 rekordów z RCE w bazie:")
         for row in latest:
             print(f"UTC: {row.datetime_utc} | RCE: {row.rce_pln_mwh} PLN/MWh")
     finally:
