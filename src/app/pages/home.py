@@ -1,8 +1,7 @@
 import streamlit as st
+from src.app.layout import render_page_header
 
-st.set_page_config(page_title="Dashboard Energetyczny", page_icon="⚡", layout="wide")
-
-st.title("System analityczny Rynku Energii")
+render_page_header("System analityczny Rynku Energii")
 st.markdown(
     """
     ### O projekcie
