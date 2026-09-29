@@ -12,9 +12,10 @@ st.set_page_config(
 apply_custom_styles()
 
 page_home = st.Page("pages/home.py", title="Strona Główna", icon="🏠", default=True)
+page_procject_info = st.Page("pages/0_O_projekcie.py", title="O projekcie", icon="ℹ️")
 page_prices = st.Page("pages/1_Analiza_cenowa.py", title="Analiza cenowa", icon="📈")
 
-g = st.navigation([page_home, page_prices])
+g = st.navigation([page_home, page_procject_info, page_prices])
 g.run()
 
 render_sidebar_footer()
