@@ -13,7 +13,7 @@ def apply_custom_styles():
         /* Mniej pustego miejsca u góry */
         .block-container {padding-top: 2rem; padding-bottom: 2rem;}
 
-        /* Karty KPI (stMetric to nowsza nazwa niż metric-container) */
+        /* Karty KPI */
         [data-testid="stMetric"], div[data-testid="metric-container"] {
             background-color: var(--secondary-background-color);
             border: 1px solid rgba(128,128,128,0.2);
@@ -22,11 +22,12 @@ def apply_custom_styles():
         }
         [data-testid="stMetricLabel"] {opacity: 0.7;}
 
-        /* Wykresy Plotly w zaokrąglonej ramce */
+        /* Wykresy Plotly w zaokrąglonej ramce bez niechcianego paska przewijania */
         [data-testid="stPlotlyChart"] {
             border: 1px solid rgba(128,128,128,0.2);
             border-radius: 8px;
-            padding: 0.5rem;
+            overflow: hidden;
+            box-sizing: border-box;
         }
         </style>
         """,
