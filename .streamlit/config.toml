@@ -1,0 +1,25 @@
+[theme]
+# Główny motyw bazy
+base = "dark"
+
+# Kolor akcentu (przyciski, aktywne taby, suwaki) - energetyczna zieleń
+primaryColor = "#00E676"
+
+# Tło głównej części aplikacji - głęboki, techniczny granat (ciemniejszy niż standardowy szary)
+backgroundColor = "#0b101e"
+
+# Tło paneli, sidebara i kart metryk
+secondaryBackgroundColor = "#151b2c"
+
+# Kolor czcionki
+textColor = "#e2e8f0"
+
+# Krój czcionki
+font = "sans serif"
+
+# Kolory komponentów tabelarycznych
+dataframeBorderColor = "#1e293b"
+dataframeHeaderBackgroundColor = "#0f172a"
+
+[client]
+toolbarMode = "minimal"
