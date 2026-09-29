@@ -9,6 +9,7 @@ ignore = ["E501"]
 
 [lint.per-file-ignores]
 "src/app/pages/*" = ["F401", "F841", "I001"]
+"**/run_etl.py" = ["F401", "F841", "I001"]
 
 [format]
 quote-style = "double"

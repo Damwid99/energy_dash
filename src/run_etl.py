@@ -2,7 +2,7 @@ from zoneinfo import ZoneInfo
 
 from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.triggers.cron import CronTrigger
-
+from src.models_db import renewables, energy
 from src.common.database import Base, engine
 from src.etl.extract.pse_api import fetch_and_save_cen, fetch_and_save_rce
 from src.etl.extract.tge_api import fetch_and_save_tge
