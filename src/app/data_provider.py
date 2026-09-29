@@ -113,3 +113,18 @@ def get_kse_contracting_status(
     df.drop(columns=["datetime_utc"], inplace=True)
 
     return df
+
+
+@st.cache_data(ttl=900)
+def get_assets_metadata() -> pd.DataFrame:
+    """
+    Zwraca dataframe ze wszystkimi metdanymi farm wiatrowych i słonecznych
+    """
+
+    query = text("""
+        SELECT * FROM renewable_farms
+        """)
+
+    df = pd.read_sql(query, con=engine)
+
+    return df
