@@ -6,7 +6,10 @@ import plotly.graph_objects as go
 
 from src.app.layout import render_page_header
 from src.app.data_provider import get_energy_prices
-from src.app.components.charts import plot_price_indices_contracting_status
+from src.app.components.charts import (
+    plot_price_indices_contracting_status_15min,
+    plot_price_indices_contracting_status_1h,
+)
 
 render_page_header("Informacje bieżące")
 
@@ -87,16 +90,27 @@ with col3:
     )
 
 
+granularity = st.segmented_control(
+    "Interwał",
+    options=["15 Minut", "1 Godzina"],
+    default="15 Minut",
+    label_visibility="collapsed",
+)
 tab1, tab2 = st.tabs([f"{string_today}", f"{string_yesterday}"])
 
 with tab1:
-    st.plotly_chart(
-        plot_price_indices_contracting_status(today_df, today_df_1h), use_container_width=True
-    )
+    if granularity == "15 Minut":
+        fig = plot_price_indices_contracting_status_15min(today_df)
+    else:
+        fig = plot_price_indices_contracting_status_1h(today_df_1h)
+
+    st.plotly_chart(fig, use_container_width=True)
 
 
 with tab2:
-    st.plotly_chart(
-        plot_price_indices_contracting_status(yesterday_df, yesterday_df_df_1h),
-        use_container_width=True,
-    )
+    if granularity == "15 Minut":
+        fig = plot_price_indices_contracting_status_15min(yesterday_df)
+    else:
+        fig = plot_price_indices_contracting_status_1h(yesterday_df_df_1h)
+
+    st.plotly_chart(fig, use_container_width=True)
