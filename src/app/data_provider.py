@@ -15,7 +15,8 @@ def get_energy_prices() -> pd.DataFrame:
             datetime_utc,
             rce_pln_mwh,
             fixing_1_pln_mwh,
-            fixing_2_pln_mwh
+            fixing_2_pln_mwh,
+            cen_pln_mwh
         FROM energy_prices
         ORDER BY datetime_utc ASC
     """
