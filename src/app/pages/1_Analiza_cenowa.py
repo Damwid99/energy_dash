@@ -3,23 +3,11 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
-from src.app.data_provider import get_energy_prices
+from src.app.data_provider import get_energy_prices, get_min_max_date
 from src.app.layout import render_page_header
 
-render_page_header("Dynamiczne ceny energii (RCE)")
-st.markdown("Monitor rynku bilansującego. Ceny podane w `PLN/MWh`.")
-
-with st.spinner("Pobieranie danych z bazy..."):
-    df = get_energy_prices()
-
-if df.empty:
-    st.warning("Brak danych w bazie")
-    st.stop()
-
-
-min_date = df.index.min().date()
-max_date = df.index.max().date()
-safe_start = max(min_date, max_date - timedelta(days=2))
+render_page_header("Ceny energii")
+st.markdown("Monitor polskiego rynku energii. Ceny podane w `PLN/MWh`.")
 
 price_indices = {
     "fixing_1_pln_mwh": "Fixing I",
@@ -36,7 +24,17 @@ with st.sidebar:
         options=list(price_indices.keys()),
         format_func=lambda x: price_indices[x],
     )
-    selected_dates = st.sidebar.date_input(
+
+    min_dt_local, max_dt_local = get_min_max_date(selected_price)
+    if min_dt_local is None or max_dt_local is None:
+        st.warning("Brak danych dla wybranego indeksu.")
+        st.stop()
+
+    min_date = min_dt_local.date()
+    max_date = max_dt_local.date()
+    safe_start = max(min_date, max_date - timedelta(days=2))
+
+    selected_dates = st.date_input(
         "Wybierz zakres dat",
         value=[safe_start, max_date],
         min_value=min_date,
@@ -52,19 +50,25 @@ else:
     st.error("Proszę wybrać początek i koniec przedziału czasowego")
     st.stop()
 
-start_dt = pd.Timestamp(start_date)
+start_dt_local = pd.Timestamp(start_date).tz_localize("Europe/Warsaw")
+end_dt_local = (
+    pd.Timestamp(end_date) + pd.Timedelta(days=1) - pd.Timedelta(nanoseconds=1)
+).tz_localize("Europe/Warsaw")
 
-end_dt = pd.Timestamp(end_date) + pd.Timedelta(days=1) - pd.Timedelta(nanoseconds=1)
+start_dt_utc = start_dt_local.tz_convert("UTC")
+end_dt_utc = end_dt_local.tz_convert("UTC")
 
-if df.index.tz is not None:
-    start_dt = start_dt.tz_localize(df.index.tz)
-    end_dt = end_dt.tz_localize(df.index.tz)
+with st.spinner("Pobieranie danych z bazy..."):
+    filtered_df = get_energy_prices(start_dt_utc, end_dt_utc)
 
-filtered_df = df.loc[(df.index >= start_dt) & (df.index <= end_dt)].copy()
 
 st.subheader(f"Podsumowanie okresu: {start_date} do {end_date}")
 
-if not filtered_df.empty:
+if (
+    not filtered_df.empty
+    and selected_price in filtered_df.columns
+    and filtered_df[selected_price].notna().any()
+):
     avg_price = filtered_df[selected_price].mean()
     negative_hours = (filtered_df[selected_price] < 0).sum()
     max_price = filtered_df[selected_price].max()
@@ -102,10 +106,15 @@ if not filtered_df.empty:
         hovermode="x unified",
         xaxis=dict(showgrid=False),
         yaxis=dict(gridcolor="rgba(0,0,0,0.1)"),
+        margin=dict(l=20, r=20, t=30, b=20),
     )
 
     st.plotly_chart(fig, use_container_width=True)
 
+##################### Indeksy cenowe ####################
+
+
+##################### Surowe dane ######################
 with st.expander("Pokaż surowe dane"):
     df_display = filtered_df.copy()
     df_display.rename(columns=price_indices, inplace=True)
