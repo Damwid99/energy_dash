@@ -11,122 +11,66 @@ def get_background_colors(
     return np.select(conditions, choices, default="rgba(0,0,0,0)")
 
 
-def plot_price_indices_contracting_status(df_15min: pd.DataFrame, df_1h: pd.DataFrame) -> go.Figure:
+def _build_price_indices_chart(df: pd.DataFrame, interval_minutes: int, title: str) -> go.Figure:
+    """Prywatna funkcja pomocnicza budująca wykres Plotly dla zadanego interwału.
+
+    Wykorzystuje czysto wektorowe przekształcenia oraz bezpieczną obsługę brakujących wartości.
     """
-    Tworzy interaktywny wykres Plotly przedstawiający indeksy cenowe oraz stan zakontraktowania KSE.
+    fig = go.Figure()
 
-    Funkcja generuje wykres liniowy dla cen (Fixing I, Fixing II, CEN) nałożony na wykres
-    słupkowy pełniący rolę tła, który wizualizuje stan zakontraktowania. Zawiera wbudowane menu (updatemenus)
-    pozwalające na płynne przełączanie między danymi 15-minutowymi a godzinowymi.
+    # Wektorowe wyznaczenie wysokości słupków - tylko tam, gdzie kse_contracting_status != 0
+    status = df["kse_contracting_status"].fillna(0)
+    y_bar = np.where(status != 0, 1, np.nan)
 
-    Args:
-        df_15min (pd.DataFrame): Ramka danych z agregacją 15-minutową. Wymaga indeksu
-            czasowego (datetime) oraz kolumn: 'fixing_1_pln_mwh', 'fixing_2_pln_mwh',
-            'cen_pln_mwh', 'kse_contracting_status'.
-        df_1h (pd.DataFrame): Ramka danych z agregacją 1-godzinną o identycznej
-            strukturze kolumn i indeksu jak df_15min.
+    # Szerokość słupka w ms dla Plotly
+    bar_width_ms = interval_minutes * 60 * 1000
 
-    Returns:
-        go.Figure: Skonfigurowany obiekt wykresu Plotly z dwiema osiami Y, menu
-            przycisków i zdefiniowanymi widocznościami poszczególnych serii.
-    """
-
-    fig_price_indices_contracting_status = go.Figure()
-
-    # --- SERIE 15-MINUTOWE ---
-    fig_price_indices_contracting_status.add_trace(
+    # --- SERIA SŁUPKOWA (TŁO) ---
+    fig.add_trace(
         go.Bar(
-            x=df_15min.index,
-            y=[1] * len(df_15min),
+            x=df.index,
+            y=y_bar,
             yaxis="y2",
-            marker_color=get_background_colors(df_15min["kse_contracting_status"]),
-            width=15 * 60 * 1000,
+            marker_color=get_background_colors(df["kse_contracting_status"]),
+            marker_line_width=0,  # Bez obramowania słupków
+            width=bar_width_ms,
             name="Stan zakontraktowania",
             hoverinfo="skip",
             showlegend=False,
-            visible=True,
         )
     )
 
-    fig_price_indices_contracting_status.add_trace(
+    # --- SERIE LINIOWE (INDEKSY CENOWE) ---
+    fig.add_trace(
         go.Scatter(
-            x=df_15min.index,
-            y=df_15min["fixing_1_pln_mwh"],
+            x=df.index,
+            y=df["fixing_1_pln_mwh"],
             mode="lines",
             name="Fixing I",
             line=dict(color="#1f77b4"),
-            visible=True,
         )
     )
-    fig_price_indices_contracting_status.add_trace(
+    fig.add_trace(
         go.Scatter(
-            x=df_15min.index,
-            y=df_15min["fixing_2_pln_mwh"],
+            x=df.index,
+            y=df["fixing_2_pln_mwh"],
             mode="lines",
             name="Fixing II",
             line=dict(color="#ff7f0e"),
-            visible=True,
         )
     )
-    fig_price_indices_contracting_status.add_trace(
+    fig.add_trace(
         go.Scatter(
-            x=df_15min.index,
-            y=df_15min["cen_pln_mwh"],
+            x=df.index,
+            y=df["cen_pln_mwh"],
             mode="lines",
             name="CEN",
             line=dict(color="#2ca02c"),
-            visible=True,
         )
     )
 
-    # --- SERIE GODZINOWE ---
-    fig_price_indices_contracting_status.add_trace(
-        go.Bar(
-            x=df_1h.index,
-            y=[1] * len(df_1h),
-            yaxis="y2",
-            marker_color=get_background_colors(df_1h["kse_contracting_status"]),
-            width=60 * 60 * 1000,
-            name="Tło 1h",
-            hoverinfo="skip",
-            showlegend=False,
-            visible=False,
-        )
-    )
-
-    fig_price_indices_contracting_status.add_trace(
-        go.Scatter(
-            x=df_1h.index,
-            y=df_1h["fixing_1_pln_mwh"],
-            mode="lines",
-            name="Fixing I (1h)",
-            line=dict(color="#1f77b4"),
-            visible=False,
-        )
-    )
-    fig_price_indices_contracting_status.add_trace(
-        go.Scatter(
-            x=df_1h.index,
-            y=df_1h["fixing_2_pln_mwh"],
-            mode="lines",
-            name="Fixing II (1h)",
-            line=dict(color="#ff7f0e"),
-            visible=False,
-        )
-    )
-    fig_price_indices_contracting_status.add_trace(
-        go.Scatter(
-            x=df_1h.index,
-            y=df_1h["cen_pln_mwh"],
-            mode="lines",
-            name="CEN (1h)",
-            line=dict(color="#2ca02c"),
-            visible=False,
-        )
-    )
-
-    fig_price_indices_contracting_status.update_layout(
-        title="Indeksy cenowe oraz stan zakontraktowania KSE",
+    fig.update_layout(
+        title=title,
         xaxis=dict(title="Czas", type="date"),
         yaxis=dict(title="Cena [PLN/MWh]", domain=[0, 1]),
         yaxis2=dict(
@@ -141,35 +85,26 @@ def plot_price_indices_contracting_status(df_15min: pd.DataFrame, df_1h: pd.Data
         bargap=0,
         hovermode="x unified",
         template="plotly_white",
-        updatemenus=[
-            dict(
-                type="buttons",
-                direction="left",
-                buttons=[
-                    dict(
-                        label="15 Minut",
-                        method="update",
-                        args=[
-                            {"visible": [True, True, True, True, False, False, False, False]},
-                            {"title": "Indeksy cenowe i stan zakontraktowania (15-minutowe)"},
-                        ],
-                    ),
-                    dict(
-                        label="1 Godzina",
-                        method="update",
-                        args=[
-                            {"visible": [False, False, False, False, True, True, True, True]},
-                            {"title": "Indeksy cenowe i stan zakontraktowania (Godzinowe)"},
-                        ],
-                    ),
-                ],
-                pad={"r": 10, "t": 10},
-                showactive=True,
-                x=0.0,
-                xanchor="left",
-                y=1.15,
-                yanchor="top",
-            )
-        ],
     )
-    return fig_price_indices_contracting_status
+
+    return fig
+
+
+def plot_price_indices_contracting_status_15min(
+    df_15min: pd.DataFrame,
+) -> go.Figure:
+    """Tworzy interaktywny wykres Plotly dla danych 15-minutowych."""
+    return _build_price_indices_chart(
+        df=df_15min,
+        interval_minutes=15,
+        title="Indeksy cenowe i stan zakontraktowania (15-minutowe)",
+    )
+
+
+def plot_price_indices_contracting_status_1h(df_1h: pd.DataFrame) -> go.Figure:
+    """Tworzy interaktywny wykres Plotly dla danych 1-godzinnych."""
+    return _build_price_indices_chart(
+        df=df_1h,
+        interval_minutes=60,
+        title="Indeksy cenowe i stan zakontraktowania (Godzinowe)",
+    )
