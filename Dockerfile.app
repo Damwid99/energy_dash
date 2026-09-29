@@ -12,6 +12,8 @@ RUN uv sync --frozen --no-install-project
 
 COPY src/ /app/src/
 
+COPY .streamlit/ /app/.streamlit/
+
 EXPOSE 8501
 
 CMD ["streamlit", "run", "src/app/main.py"]

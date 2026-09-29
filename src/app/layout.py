@@ -6,28 +6,27 @@ def apply_custom_styles():
         """
         <style>
         footer {visibility: hidden;}
-        [data-testid="stAppDeployButton"],
-        [data-testid="stMainMenu"],
-        [data-testid="stToolbarActions"] {display: none;}
-
-        /* Mniej pustego miejsca u góry */
-        .block-container {padding-top: 2rem; padding-bottom: 2rem;}
-
-        /* Karty KPI */
         [data-testid="stMetric"], div[data-testid="metric-container"] {
             background-color: var(--secondary-background-color);
-            border: 1px solid rgba(128,128,128,0.2);
-            padding: 0.9rem 1rem;
-            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.05);
+            border-left: 4px solid #00E676; /* Neonowy akcent z lewej */
+            padding: 1rem;
+            border-radius: 6px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            transition: transform 0.2s ease;
         }
-        [data-testid="stMetricLabel"] {opacity: 0.7;}
-
-        /* Wykresy Plotly w zaokrąglonej ramce bez niechcianego paska przewijania */
-        [data-testid="stPlotlyChart"] {
-            border: 1px solid rgba(128,128,128,0.2);
-            border-radius: 8px;
-            overflow: hidden;
-            box-sizing: border-box;
+        [data-testid="stMetric"]:hover {
+            transform: translateY(-2px); /* Delikatne uniesienie po najechaniu */
+        }
+        [data-testid="stMetricLabel"] {
+            font-size: 0.9rem !important;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #94a3b8;
+        }
+        [data-testid="stMetricValue"] {
+            font-size: 1.8rem !important;
+            font-weight: 700 !important;
         }
         </style>
         """,
