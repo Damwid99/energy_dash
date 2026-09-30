@@ -133,7 +133,7 @@ def get_assets_metadata() -> pd.DataFrame:
     return df
 
 
-@st.cache_data()
+@st.cache_data(ttl=900)
 def get_assets_capacity_factors() -> pd.DataFrame:
     """
     Zwraca dataframe z capcity factors farm
@@ -158,7 +158,7 @@ def get_assets_capacity_factors() -> pd.DataFrame:
     return df
 
 
-@st.cache_data()
+@st.cache_data(ttl=900)
 def get_asset_geneartion_and_prices(asset_id: int, dropna: bool = True) -> pd.DataFrame:
     """
     Zwraca dataframe z generacją farm, prognozami generacji oraz indeksami cenowymi
@@ -209,39 +209,54 @@ def get_asset_geneartion_and_prices(asset_id: int, dropna: bool = True) -> pd.Da
     return df
 
 
-@st.cache_data()
+@st.cache_data(ttl=300)
 def get_news_articles(issued_day: date) -> pd.DataFrame:
-    today = datetime.combine(issued_day, time(7, 0, tzinfo=UTC))
-    yesterday = today - timedelta(days=1)
+    end = datetime.combine(issued_day, time(7, 0, tzinfo=UTC))
+    start = end - timedelta(days=1)
 
     with SessionLocal() as session:
         rows = (
             session.query(NewsArticle)
-            .filter(NewsArticle.published_utc >= yesterday)
-            .filter(NewsArticle.published_utc < today)
+            .filter(NewsArticle.published_utc >= start)
+            .filter(NewsArticle.published_utc < end)
+            .order_by(NewsArticle.published_utc.desc())
             .all()
         )
+        records = [
+            {
+                "id": r.id,
+                "topic": r.topic,
+                "title": r.title,
+                "source": r.source,
+                "url": r.real_url or r.url,
+                "published_utc": r.published_utc,
+            }
+            for r in rows
+        ]
+    return pd.DataFrame(records)
 
-    df = pd.DataFrame([row.__dict__ for row in rows]).drop(columns=["_sa_instance_state"])
-    return df
 
-
-@st.cache_data()
-def get_news_digest(issued_day: date) -> pd.DataFrame:
+@st.cache_data(ttl=300)
+def get_news_digest(issued_day: date) -> dict | None:
     with SessionLocal() as session:
-        digest = session.query(NewsDigest).filter(NewsDigest.issued_day_utc == issued_day).all()
-
-    df = pd.DataFrame([d.__dict__ for d in digest]).drop(columns=["_sa_instance_state"])
-    return df
-
-
-@st.cache_data()
-def get_dates_of_summaries():
-    with SessionLocal() as session:
-        rows = (
-            session.query(NewsDigest.issued_day_utc)
-            .distinct()
-            .order_by(NewsDigest.issued_day_utc)
-            .all()
+        d = (
+            session.query(NewsDigest)
+            .filter(NewsDigest.issued_day_utc == issued_day)
+            .order_by(NewsDigest.generated_utc.desc())
+            .first()
         )
-    return {r[0] for r in rows}
+        if d is None:
+            return None
+        return {
+            "items": d.items,
+            "generated_utc": d.generated_utc,
+            "model": d.model,
+            "n_articles": d.n_articles,
+        }
+
+
+@st.cache_data(ttl=300)
+def get_dates_of_summaries() -> list[date]:
+    with SessionLocal() as session:
+        rows = session.query(NewsDigest.issued_day_utc).order_by(NewsDigest.issued_day_utc).all()
+    return [r[0] for r in rows]
