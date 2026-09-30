@@ -76,8 +76,8 @@ if (
 
     col1, col2, col3 = st.columns(3)
 
-    col1.metric("Średnia cena RCE", f"{avg_price:.2f} zł")
-    col2.metric("Okresy ujemne", f"{negative_hours} h")
+    col1.metric("Średnia cena", f"{avg_price:.2f} zł")
+    col2.metric("Okresy ujemne", f"{negative_hours}")
     col3.metric(
         "Najdroższa energia", f"{max_price:.2f} zł", delta=max_time_local, delta_color="off"
     )
