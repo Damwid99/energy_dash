@@ -1,8 +1,11 @@
+from datetime import UTC, date, datetime, time, timedelta
+
 import pandas as pd
 import streamlit as st
 from sqlalchemy import text
 
-from src.common.database import engine
+from src.common.database import SessionLocal, engine
+from src.models_db.news import NewsArticle, NewsDigest
 
 DEFAULT_ENERGY_COLUMNS = [
     "rce_pln_mwh",
@@ -204,3 +207,41 @@ def get_asset_geneartion_and_prices(asset_id: int, dropna: bool = True) -> pd.Da
     if dropna:
         df = df.dropna()
     return df
+
+
+@st.cache_data()
+def get_news_articles(issued_day: date) -> pd.DataFrame:
+    today = datetime.combine(issued_day, time(7, 0, tzinfo=UTC))
+    yesterday = today - timedelta(days=1)
+
+    with SessionLocal() as session:
+        rows = (
+            session.query(NewsArticle)
+            .filter(NewsArticle.published_utc >= yesterday)
+            .filter(NewsArticle.published_utc < today)
+            .all()
+        )
+
+    df = pd.DataFrame([row.__dict__ for row in rows]).drop(columns=["_sa_instance_state"])
+    return df
+
+
+@st.cache_data()
+def get_news_digest(issued_day: date) -> pd.DataFrame:
+    with SessionLocal() as session:
+        digest = session.query(NewsDigest).filter(NewsDigest.issued_day_utc == issued_day).all()
+
+    df = pd.DataFrame([d.__dict__ for d in digest]).drop(columns=["_sa_instance_state"])
+    return df
+
+
+@st.cache_data()
+def get_dates_of_summaries():
+    with SessionLocal() as session:
+        rows = (
+            session.query(NewsDigest.issued_day_utc)
+            .distinct()
+            .order_by(NewsDigest.issued_day_utc)
+            .all()
+        )
+    return {r[0] for r in rows}
