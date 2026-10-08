@@ -7,7 +7,12 @@ from apscheduler.triggers.cron import CronTrigger
 
 from src.common.database import Base, engine
 from src.etl.extract.news_rss import fetch_and_save_news
-from src.etl.extract.pse_api import fetch_and_save_cen, fetch_and_save_rce, fetch_and_save_oze
+from src.etl.extract.pse_api import (
+    fetch_and_save_cen,
+    fetch_and_save_rce,
+    fetch_and_save_oze,
+    fetch_and_save_oze_actuals,
+)
 from src.etl.extract.tge_api import fetch_and_save_tge
 from src.etl.transform.news_digest import digest_exists, generate_digest, today_utc
 from src.models_db import energy, news, renewables
@@ -33,6 +38,11 @@ def task_daily_market_data():
     print("[ETL] Uruchamianie pobierania RCE i TGE (codzienny batch)...")
     fetch_and_save_rce(days_back=5)
     fetch_and_save_tge(days_back=3)
+    fetch_and_save_oze_actuals(days_back=5)
+
+
+def task_daily_market_forecasts():
+    print("[ETL] Uruchamianie pobierania OZE forecasts...")
     fetch_and_save_oze(days_back=5, days_forward=2)
 
 
@@ -64,6 +74,7 @@ if __name__ == "__main__":
 
     task_cen()
     task_daily_market_data()
+    task_daily_market_forecasts()
 
     scheduler = BlockingScheduler(timezone=WARSAW_TZ)
 
@@ -72,6 +83,13 @@ if __name__ == "__main__":
         trigger=CronTrigger(hour="7-18", minute="0,30", timezone=WARSAW_TZ),
         id="cen_peak",
         name="CEN co 30 minut w szczycie",
+    )
+
+    scheduler.add_job(
+        task_daily_market_forecasts,
+        trigger=CronTrigger(hour=9, minute=0, timezone=WARSAW_TZ),
+        id="oze_forecasts",
+        name="Prognozy OZE przed Fixing I",
     )
 
     scheduler.add_job(

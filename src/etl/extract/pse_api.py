@@ -300,6 +300,7 @@ def fetch_and_save_oze(
                     wind_fcst_pse = float(wind_fcst_pse)
                     demand_fcst_pse = float(demand_fcst_pse)
                     exchange_fcst_pse = float(exchange_fcst_pse)
+                    resload_fcst_pse = demand_fcst_pse - pv_fcst_pse - wind_fcst_pse
                     parsed_rows.append(
                         {
                             "issue_datetime_utc": issued_utc_dt,
@@ -308,6 +309,7 @@ def fetch_and_save_oze(
                             "wind_fcst_pse": wind_fcst_pse,
                             "demand_fcst_pse": demand_fcst_pse,
                             "exchange_fcst_pse": exchange_fcst_pse,
+                            "resload_fcst_pse": resload_fcst_pse,
                         }
                     )
 
@@ -339,6 +341,7 @@ def fetch_and_save_oze(
                             wind_fcst_pse=row["wind_fcst_pse"],
                             demand_fcst_pse=row["demand_fcst_pse"],
                             exchange_fcst_pse=row["exchange_fcst_pse"],
+                            resload_fcst_pse=row["resload_fcst_pse"],
                         )
                         session.add(record)
                     else:
@@ -347,6 +350,7 @@ def fetch_and_save_oze(
                         record.wind_fcst_pse = row["wind_fcst_pse"]
                         record.demand_fcst_pse = row["demand_fcst_pse"]
                         record.exchange_fcst_pse = row["exchange_fcst_pse"]
+                        record.resload_fcst_pse = row["resload_fcst_pse"]
                     saved += 1
                 session.commit()
                 total_saved += saved
@@ -422,7 +426,7 @@ def fetch_and_save_oze_actuals(start_date: str = None, end_date: str = None, day
                     exchange_actual = float(swm_p or 0.0) + float(swm_np or 0.0)
 
                     naive_dt = datetime.strptime(dtime_utc_str, "%Y-%m-%d %H:%M:%S")
-                    dt_utc = naive_dt.replace(tzinfo=UTC) - timedelta(hours=1)
+                    dt_utc = naive_dt.replace(tzinfo=UTC) - timedelta(minutes=15)
 
                     parsed_rows.append(
                         {
@@ -431,6 +435,9 @@ def fetch_and_save_oze_actuals(start_date: str = None, end_date: str = None, day
                             "wind_actual_pse": float(wind_actual),
                             "demand_actual_pse": float(demand_actual),
                             "exchange_actual_pse": exchange_actual,
+                            "resload_actual_pse": float(demand_actual)
+                            - float(pv_actual)
+                            - float(wind_actual),
                         }
                     )
 
@@ -462,6 +469,7 @@ def fetch_and_save_oze_actuals(start_date: str = None, end_date: str = None, day
                             wind_actual_pse=row["wind_actual_pse"],
                             demand_actual_pse=row["demand_actual_pse"],
                             exchange_actual_pse=row["exchange_actual_pse"],
+                            resload_actual_pse=row["resload_actual_pse"],
                         )
                         session.add(record)
                     else:
@@ -469,6 +477,7 @@ def fetch_and_save_oze_actuals(start_date: str = None, end_date: str = None, day
                         record.wind_actual_pse = row["wind_actual_pse"]
                         record.demand_actual_pse = row["demand_actual_pse"]
                         record.exchange_actual_pse = row["exchange_actual_pse"]
+                        record.resload_actual_pse = row["resload_actual_pse"]
 
                     saved += 1
 
