@@ -18,3 +18,15 @@ class EnergyPrice(Base):
 
     def __repr__(self):
         return f"<EnergyPrice(datetime_utc='{self.datetime_utc}', rce='{self.rce_pln_mwh}')>"
+
+
+class PseOzeForecast(Base):
+    __tablename__ = "pse_forecasts"
+
+    issue_datetime_utc = Column(DateTime(timezone=True), primary_key=True)
+    publication_datetime_utc = Column(DateTime(timezone=True), index=True)
+
+    pv_fcst_pse = Column(Float, nullable=True)
+    wind_fcst_pse = Column(Float, nullable=True)
+    demand_fcst_pse = Column(Float, nullable=True)
+    exchange_fcst_pse = Column(Float, nullable=True)
