@@ -6,7 +6,7 @@ from requests.adapters import HTTPAdapter
 from urllib3.util import Retry
 
 from src.common.database import SessionLocal
-from src.models_db.energy import EnergyPrice, PseOzeForecast
+from src.models_db.energy import EnergyPrice, PseOzeActual, PseOzeForecast
 
 
 def fetch_and_save_rce(start_date: str = None, end_date: str = None, days_back: int = 3):
@@ -360,6 +360,131 @@ def fetch_and_save_oze(
     finally:
         session.close()
         print(f"Zaktualizowano łącznie {total_saved} punktów OZE/KSE w bazie danych.")
+
+
+def fetch_and_save_oze_actuals(start_date: str = None, end_date: str = None, days_back: int = 5):
+    """
+    Pobiera rzeczywiste wykonanie zapotrzebowania, generacji OZE i wymiany z API PSE
+    (endpoint his-wlk-cal) i zapisuje je w bazie.
+    """
+    today = date.today()
+
+    end = date.fromisoformat(end_date) if end_date else today
+    start = date.fromisoformat(start_date) if start_date else today - timedelta(days=days_back)
+
+    if start > end:
+        print(f"Pusty zakres dat od {start} do {end}")
+        return
+
+    days = [start + timedelta(days=i) for i in range((end - start).days + 1)]
+    print(f"Pobieranie RZECZYWISTYCH danych OZE/KSE za dostawy: {start} do {end} ({len(days)} dób)")
+
+    http = requests.Session()
+    retries = Retry(total=3, backoff_factor=1, status_forcelist=[500, 502, 503, 504])
+    http.mount("https://", HTTPAdapter(max_retries=retries))
+
+    session = SessionLocal()
+    total_saved = 0
+
+    try:
+        for d in days:
+            d_str = d.strftime("%Y-%m-%d")
+            filter_query = f"business_date eq '{d_str}'"
+            url = f"https://api.raporty.pse.pl/api/his-wlk-cal?$filter={filter_query}"
+
+            try:
+                response = http.get(url, timeout=20)
+                response.raise_for_status()
+                data = response.json().get("value", [])
+
+                if not data:
+                    print(f"{d_str}: Brak danych rzeczywistych OZE/KSE")
+                    continue
+
+                parsed_rows = []
+                for row in data:
+                    dtime_utc_str = row.get("dtime_utc")
+                    pv_actual = row.get("pv")
+                    wind_actual = row.get("wi")
+                    demand_actual = row.get("demand")
+
+                    swm_p = row.get("swm_p")
+                    swm_np = row.get("swm_np")
+
+                    if (
+                        not dtime_utc_str
+                        or pv_actual is None
+                        or wind_actual is None
+                        or demand_actual is None
+                    ):
+                        continue
+
+                    exchange_actual = float(swm_p or 0.0) + float(swm_np or 0.0)
+
+                    naive_dt = datetime.strptime(dtime_utc_str, "%Y-%m-%d %H:%M:%S")
+                    dt_utc = naive_dt.replace(tzinfo=UTC) - timedelta(hours=1)
+
+                    parsed_rows.append(
+                        {
+                            "datetime_utc": dt_utc,
+                            "pv_actual_pse": float(pv_actual),
+                            "wind_actual_pse": float(wind_actual),
+                            "demand_actual_pse": float(demand_actual),
+                            "exchange_actual_pse": exchange_actual,
+                        }
+                    )
+
+                if not parsed_rows:
+                    continue
+
+                day_from = parsed_rows[0]["datetime_utc"]
+                day_to = parsed_rows[-1]["datetime_utc"]
+
+                existing = {
+                    r.datetime_utc: r
+                    for r in session.query(PseOzeActual)
+                    .filter(
+                        PseOzeActual.datetime_utc >= day_from,
+                        PseOzeActual.datetime_utc <= day_to,
+                    )
+                    .all()
+                }
+
+                saved = 0
+                for row in parsed_rows:
+                    dt = row["datetime_utc"]
+                    record = existing.get(dt)
+
+                    if record is None:
+                        record = PseOzeActual(
+                            datetime_utc=dt,
+                            pv_actual_pse=row["pv_actual_pse"],
+                            wind_actual_pse=row["wind_actual_pse"],
+                            demand_actual_pse=row["demand_actual_pse"],
+                            exchange_actual_pse=row["exchange_actual_pse"],
+                        )
+                        session.add(record)
+                    else:
+                        record.pv_actual_pse = row["pv_actual_pse"]
+                        record.wind_actual_pse = row["wind_actual_pse"]
+                        record.demand_actual_pse = row["demand_actual_pse"]
+                        record.exchange_actual_pse = row["exchange_actual_pse"]
+
+                    saved += 1
+
+                session.commit()
+                total_saved += saved
+                print(f"{d_str}: zapisano {saved} punktów RZECZYWISTYCH (OZE/KSE).")
+
+            except Exception as e:
+                print(f"{d_str}: BŁĄD - {e}")
+                session.rollback()
+
+            time.sleep(0.5)
+
+    finally:
+        session.close()
+        print(f"Zaktualizowano łącznie {total_saved} RZECZYWISTYCH punktów OZE/KSE w bazie danych.")
 
 
 if __name__ == "__main__":
