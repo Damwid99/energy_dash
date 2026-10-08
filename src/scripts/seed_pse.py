@@ -15,8 +15,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from sqlalchemy import func
 
 from src.common.database import SessionLocal
-from src.etl.extract.pse_api import fetch_and_save_cen, fetch_and_save_rce
-from src.models_db.energy import EnergyPrice
+from src.etl.extract.pse_api import fetch_and_save_cen, fetch_and_save_oze, fetch_and_save_rce
+from src.models_db.energy import EnergyPrice, PseOzeForecast
 
 
 def seed_rce():
@@ -77,5 +77,37 @@ def seed_cen():
         session.close()
 
 
+def seed_oze():
+    parser = argparse.ArgumentParser(
+        description="Seedowanie OZE/KSE", formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument("--from", dest="start", help="pierwsza doba dostawy (YYYY-MM-DD)")
+    parser.add_argument("--to", dest="end", help="ostatnia doba dostawy (YYYY-MM-DD)")
+    args = parser.parse_args()
+
+    print("Rozpoczynam seedowanie danych OZE/KSE z PSE")
+    fetch_and_save_oze(start_date=args.start, end_date=args.end, days_back=60)
+
+    session = SessionLocal()
+    try:
+        total, first, last, pv_count, wind_count = session.query(
+            func.count(PseOzeForecast.issue_datetime_utc),
+            func.min(PseOzeForecast.issue_datetime_utc),
+            func.max(PseOzeForecast.issue_datetime_utc),
+            func.count(PseOzeForecast.pv_fcst_pse),
+            func.count(PseOzeForecast.wind_fcst_pse),
+        ).one()
+
+        print(f"\nW bazie (tabela pse_forecasts): {total} wierszy, od {first} do {last} (UTC)")
+        print(f"  z przypisaną prognozą PV: {pv_count}")
+        print(f"  z przypisaną prognozą Wiatru: {wind_count}")
+
+    finally:
+        session.close()
+
+
 if __name__ == "__main__":
-    seed_cen()
+    # seed_rce()
+    # seed_cen()
+
+    seed_oze()
