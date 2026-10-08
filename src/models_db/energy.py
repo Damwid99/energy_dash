@@ -31,6 +31,8 @@ class PseOzeForecast(Base):
     demand_fcst_pse = Column(Float, nullable=True)
     exchange_fcst_pse = Column(Float, nullable=True)
 
+    resload_fcst_pse = Column(Float, nullable=True)
+
 
 class PseOzeActual(Base):
     __tablename__ = "pse_actuals"
@@ -41,3 +43,26 @@ class PseOzeActual(Base):
     wind_actual_pse = Column(Float, nullable=True)
     demand_actual_pse = Column(Float, nullable=True)
     exchange_actual_pse = Column(Float, nullable=True)
+    resload_actual_pse = Column(Float, nullable=True)
+
+
+class VEnergySummary(Base):
+    __tablename__ = "v_energy_summary"
+
+    datetime_utc = Column(DateTime(timezone=True), primary_key=True)
+
+    pv_fcst_pse = Column(Float)
+    wind_fcst_pse = Column(Float)
+    demand_fcst_pse = Column(Float)
+    exchange_fcst_pse = Column(Float)
+    resload_fcst_pse = Column(Float)
+
+    pv_actual_pse = Column(Float)
+    wind_actual_pse = Column(Float)
+    demand_actual_pse = Column(Float)
+    exchange_actual_pse = Column(Float)
+    resload_actual_pse = Column(Float)
+
+    fixing_1_pln_mwh = Column(Float)
+    fixing_2_pln_mwh = Column(Float)
+    cen_pln_mwh = Column(Float)
