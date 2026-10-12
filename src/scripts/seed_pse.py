@@ -144,5 +144,5 @@ def seed_oze_actuals():
 if __name__ == "__main__":
     # seed_rce()
     # seed_cen()
-    # seed_oze()
-    seed_oze_actuals()
+    seed_oze()
+    # seed_oze_actuals()
