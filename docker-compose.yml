@@ -45,5 +45,25 @@ services:
       postgres_db:
         condition: service_healthy
 
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v3.17.0
+    container_name: energy_mlflow
+    restart: always
+    env_file:
+      - .env
+    depends_on:
+      postgres_db:
+        condition: service_healthy
+    volumes:
+      - mlflow_artifacts:/mlflow/artifacts
+    command: >
+      mlflow server
+      --backend-store-uri postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres_db:5432/mlflow
+      --artifacts-destination /mlflow/artifacts
+      --serve-artifacts
+      --host 0.0.0.0
+      --port 5000
+
 volumes:
   postgres_data:
+  mlflow_artifacts:
