@@ -46,7 +46,10 @@ services:
         condition: service_healthy
 
   mlflow:
-    image: ghcr.io/mlflow/mlflow:v3.17.0
+    build:
+      context: .
+      dockerfile: Dockerfile.mlflow
+    image: energy-dash-mlflow:v3.17.0
     container_name: energy_mlflow
     restart: always
     env_file:
@@ -58,7 +61,7 @@ services:
       - mlflow_artifacts:/mlflow/artifacts
     command: >
       mlflow server
-      --backend-store-uri postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres_db:5432/mlflow
+      --backend-store-uri postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres_db:5432/mlflow
       --artifacts-destination /mlflow/artifacts
       --serve-artifacts
       --host 0.0.0.0
