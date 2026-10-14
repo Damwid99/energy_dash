@@ -15,12 +15,31 @@ from src.etl.extract.pse_api import (
 )
 from src.etl.extract.tge_api import fetch_and_save_tge
 from src.etl.transform.news_digest import digest_exists, generate_digest, today_utc
-from src.models_db import energy, news, renewables
+from src.models_db import energy, news, renewables, forecasts
+from src.ml.evaluation import evaluate_forecasts
 
 WARSAW_TZ = ZoneInfo("Europe/Warsaw")
 NEWS_HOUR = 7
 
 _news_lock = threading.Lock()
+
+
+def task_daily_forecast():
+    from src.ml.predictor import run_daily_forecast
+
+    print("[ETL] Uruchamianie prognozy cen Fixing I...")
+    try:
+        run_daily_forecast()
+    except Exception as e:
+        print(f"[ETL] Prognoza nie powiodła się: {e}")
+
+
+def task_evaluate_forecasts(days_back: int):
+    try:
+        n = evaluate_forecasts(days_back)
+        print(f"[ETL] Zewaluowano {n} runów prognoz.")
+    except Exception as e:
+        print(f"[ETL] Ewaluacja prognoz nie powiodła się: {e}")
 
 
 def init_db():
@@ -39,6 +58,7 @@ def task_daily_market_data():
     fetch_and_save_rce(days_back=5)
     fetch_and_save_tge(days_back=3)
     fetch_and_save_oze_actuals(days_back=5)
+    task_evaluate_forecasts(days_back=4)
 
 
 def task_daily_market_forecasts():
@@ -87,7 +107,7 @@ if __name__ == "__main__":
 
     scheduler.add_job(
         task_daily_market_forecasts,
-        trigger=CronTrigger(hour=9, minute=0, timezone=WARSAW_TZ),
+        trigger=CronTrigger(hour=7, minute="15,30,45", timezone=WARSAW_TZ),
         id="oze_forecasts",
         name="Prognozy OZE przed Fixing I",
     )
@@ -114,6 +134,16 @@ if __name__ == "__main__":
         coalesce=True,
         max_instances=1,
         misfire_grace_time=3600,
+    )
+
+    scheduler.add_job(
+        task_daily_forecast,
+        trigger=CronTrigger(hour=8, minute="15,30,45", timezone=WARSAW_TZ),
+        id="daily_forecast",
+        name="Prognoza Fixing I (z ponowieniami)",
+        coalesce=True,
+        max_instances=1,
+        misfire_grace_time=600,
     )
 
     if datetime.now(WARSAW_TZ).hour >= NEWS_HOUR:
