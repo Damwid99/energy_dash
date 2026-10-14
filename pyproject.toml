@@ -12,6 +12,7 @@ dependencies = [
     "beautifulsoup4>=4.15.0",
     "feedparser>=6.0.14",
     "googlenewsdecoder>=0.2.1",
+    "holidays>=0.106",
     "html5lib>=1.1",
     "litellm>=1.103.1",
     "lxml>=6.1.3",
