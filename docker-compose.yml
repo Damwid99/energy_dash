@@ -28,6 +28,8 @@ services:
     depends_on:
       postgres_db:
         condition: service_healthy
+      mlflow:
+        condition: service_started
 
   streamlit_app:
     build:
