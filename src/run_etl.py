@@ -61,9 +61,10 @@ def task_daily_market_data():
     task_evaluate_forecasts(days_back=4)
 
 
-def task_daily_market_forecasts():
-    print("[ETL] Uruchamianie pobierania OZE forecasts...")
-    fetch_and_save_oze(days_back=5, days_forward=2)
+def task_forecast_pipeline():
+    print("[ETL] Pobieranie prognoz OZE na jutro i prognoza cen...")
+    fetch_and_save_oze(days_back=0, days_forward=1)
+    task_daily_forecast()
 
 
 def task_news_daily():
@@ -94,7 +95,7 @@ if __name__ == "__main__":
 
     task_cen()
     task_daily_market_data()
-    task_daily_market_forecasts()
+    fetch_and_save_oze(days_back=3, days_forward=1)
 
     scheduler = BlockingScheduler(timezone=WARSAW_TZ)
 
@@ -106,10 +107,13 @@ if __name__ == "__main__":
     )
 
     scheduler.add_job(
-        task_daily_market_forecasts,
-        trigger=CronTrigger(hour=7, minute="15,30,45", timezone=WARSAW_TZ),
-        id="oze_forecasts",
-        name="Prognozy OZE przed Fixing I",
+        task_forecast_pipeline,
+        trigger=CronTrigger(hour="7-12", minute="*/15", timezone=WARSAW_TZ),
+        id="daily_forecast",
+        name="Prognoza Fixing I (pobranie + prognoza co 15 min)",
+        coalesce=True,
+        max_instances=1,
+        misfire_grace_time=600,
     )
 
     scheduler.add_job(
@@ -134,16 +138,6 @@ if __name__ == "__main__":
         coalesce=True,
         max_instances=1,
         misfire_grace_time=3600,
-    )
-
-    scheduler.add_job(
-        task_daily_forecast,
-        trigger=CronTrigger(hour=8, minute="15,30,45", timezone=WARSAW_TZ),
-        id="daily_forecast",
-        name="Prognoza Fixing I (z ponowieniami)",
-        coalesce=True,
-        max_instances=1,
-        misfire_grace_time=600,
     )
 
     if datetime.now(WARSAW_TZ).hour >= NEWS_HOUR:
