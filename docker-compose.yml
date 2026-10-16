@@ -28,8 +28,6 @@ services:
     depends_on:
       postgres_db:
         condition: service_healthy
-      mlflow:
-        condition: service_started
 
   streamlit_app:
     build:
@@ -42,8 +40,8 @@ services:
     env_file:
       - .env
     environment:
-      - POSTGRES_HOST=postgres_db
-      - POSTGRES_PORT=5432
+      - POSTGRES_HOST=${POSTGRES_HOST:-postgres_db}
+      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
     depends_on:
       postgres_db:
         condition: service_healthy
