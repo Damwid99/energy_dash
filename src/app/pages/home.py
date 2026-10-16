@@ -5,90 +5,170 @@ from datetime import date, datetime
 import plotly.graph_objects as go
 
 from src.app.layout import render_page_header
-from src.app.data_provider import get_energy_prices
+from src.app.data_provider import get_energy_prices, get_energy_prices_and_forecasts
 from src.app.components.charts import (
     plot_price_indices_contracting_status_15min,
     plot_price_indices_contracting_status_1h,
 )
 
 render_page_header("Informacje bieżące")
-
 now = pd.Timestamp.now(tz="Europe/Warsaw").floor("D")
+
 start_local = now - pd.Timedelta(days=1)
-end_local = now + pd.Timedelta(days=1)
+end_local = now + pd.Timedelta(days=2)
+
 start_dt_utc = start_local.tz_convert("UTC")
 end_dt_utc = end_local.tz_convert("UTC")
 
-df = get_energy_prices(
-    start_dt_utc=start_dt_utc,
-    end_dt_utc=end_dt_utc,
-    columns=["fixing_1_pln_mwh", "fixing_2_pln_mwh", "cen_pln_mwh", "kse_contracting_status"],
-)
+df = get_energy_prices_and_forecasts(start_dt_utc=start_dt_utc, end_dt_utc=end_dt_utc)
 
-yesterday_df = df.loc[str(start_local.date())].copy()
-today_df = df.loc[str(now.date())].copy()
+yesterday_df = df.loc[df.index.date == start_local.date()].copy()
+today_df = df.loc[df.index.date == now.date()].copy()
+tommorow_df = df.loc[df.index.date == (now + pd.Timedelta(days=1)).date()].copy()
+
 string_today = str(now.date())
 string_yesterday = str(start_local.date())
+string_tommorow = str(end_dt_utc.date())
+
+
+yesterday_df_1h = yesterday_df.resample("1h").agg(
+    {
+        "fixing_1_pln_mwh": "mean",
+        "fixing_2_pln_mwh": "mean",
+        "cen_pln_mwh": "mean",
+        "fixing_1_forecast_pln_mwh": "mean",
+        "p05": "mean",
+        "p10": "mean",
+        "p25": "mean",
+        "p50": "mean",
+        "p75": "mean",
+        "p90": "mean",
+        "p95": "mean",
+        "kse_contracting_status": "sum",
+    }
+)
 
 today_df_1h = today_df.resample("1h").agg(
     {
         "fixing_1_pln_mwh": "mean",
         "fixing_2_pln_mwh": "mean",
         "cen_pln_mwh": "mean",
+        "fixing_1_forecast_pln_mwh": "mean",
+        "p05": "mean",
+        "p10": "mean",
+        "p25": "mean",
+        "p50": "mean",
+        "p75": "mean",
+        "p90": "mean",
+        "p95": "mean",
         "kse_contracting_status": "sum",
     }
 )
 
-yesterday_df_df_1h = yesterday_df.resample("1h").agg(
+tommorow_df_1h = tommorow_df.resample("1h").agg(
     {
         "fixing_1_pln_mwh": "mean",
         "fixing_2_pln_mwh": "mean",
         "cen_pln_mwh": "mean",
+        "fixing_1_forecast_pln_mwh": "mean",
+        "p05": "mean",
+        "p10": "mean",
+        "p25": "mean",
+        "p50": "mean",
+        "p75": "mean",
+        "p90": "mean",
+        "p95": "mean",
         "kse_contracting_status": "sum",
     }
 )
 
 
-def get_background_colors(
-    status_series, pos_color="rgba(59, 130, 246, 0.25)", neg_color="rgba(239, 68, 68, 0.25)"
-):
-    conditions = [status_series > 0, status_series < 0]
-    choices = [pos_color, neg_color]
-    return np.select(conditions, choices, default="rgba(0,0,0,0)")
+def calculate_delta(y_true, y_pred, round_: int = 2):
+    delta = y_true - y_pred
+    vector = np.round((delta), round_)
+    mean_ = np.round(np.mean(delta), round_)
+    return vector, mean_
 
 
 col1, col2, col3 = st.columns(3)
+
 with col1:
+    st.subheader(string_tommorow)
+    if tommorow_df["fixing_1_pln_mwh"].isna().any():
+        st.metric(
+            "Prognoza Fixing I",
+            np.round(np.mean(tommorow_df["fixing_1_forecast_pln_mwh"]), 2),
+            0,
+            chart_data=np.zeros(24),
+            chart_type="area",
+            border=True,
+            help="Średnia dobowa prognozy Fixing I",
+        )
+    else:
+        delta_vector, delta_mean = calculate_delta(
+            tommorow_df_1h["fixing_1_pln_mwh"], tommorow_df_1h["fixing_1_forecast_pln_mwh"], 2
+        )
+        st.metric(
+            "Średnia Fixing I",
+            np.round(np.mean(tommorow_df["fixing_1_pln_mwh"]), 2),
+            delta_mean,
+            chart_data=delta_vector,
+            chart_type="area",
+            border=True,
+            help="Wartość delty wyliczona na podstawie wyznaczonej prognozy Fixing I (true-real)",
+        )
     st.metric(
-        f"Średnia Fixing I ({string_yesterday})",
-        f"{yesterday_df.mean()['fixing_1_pln_mwh']:.2f} zł",
-    )
-    st.metric(
-        f"Średnia Fixing I ({string_today})",
-        f"{today_df.mean()['fixing_1_pln_mwh']:.2f} zł",
+        "Średnia Fixing II",
+        f"{np.mean(tommorow_df['fixing_2_pln_mwh']):.2f} zł",
     )
 
+
 with col2:
-    st.metric(
-        f"Średnia Fixing II ({string_yesterday})",
-        f"{yesterday_df.mean()['fixing_2_pln_mwh']:.2f} zł",
+    st.subheader(string_today)
+    delta_vector, delta_mean = calculate_delta(
+        today_df_1h["fixing_1_pln_mwh"], today_df_1h["fixing_1_forecast_pln_mwh"], 2
     )
     st.metric(
-        f"Średnia Fixing II ({string_today})",
-        f"{today_df.mean()['fixing_2_pln_mwh']:.2f} zł",
+        "Średnia Fixing I",
+        np.round(np.mean(today_df["fixing_1_pln_mwh"]), 2),
+        delta_mean,
+        chart_data=delta_vector,
+        chart_type="area",
+        border=True,
+        help="Wartość delty wyliczona na podstawie wyznaczonej prognozy Fixing I (true-real)",
+    )
+    st.metric(
+        "Średnia Fixing II",
+        f"{np.mean(today_df['fixing_2_pln_mwh']):.2f} zł",
+    )
+    st.metric(
+        "Średnia CEN",
+        f"{np.mean(today_df['cen_pln_mwh']):.2f} zł",
     )
 
 
 with col3:
-    st.metric(
-        f"Średnia Fixing CEN ({string_yesterday})",
-        f"{yesterday_df.mean()['cen_pln_mwh']:.2f} zł",
+    st.subheader(string_yesterday)
+    delta_vector, delta_mean = calculate_delta(
+        yesterday_df_1h["fixing_1_pln_mwh"], yesterday_df_1h["fixing_1_forecast_pln_mwh"], 2
     )
     st.metric(
-        f"Średnia Fixing CEN ({string_today})",
-        f"{today_df.mean()['cen_pln_mwh']:.2f} zł",
+        "Średnia Fixing I",
+        np.round(np.mean(yesterday_df["fixing_1_pln_mwh"]), 2),
+        delta_mean,
+        chart_data=delta_vector,
+        chart_type="area",
+        border=True,
+        help="Wartość delty wyliczona na podstawie wyznaczonej prognozy Fixing I (true-real)",
     )
-
+    st.metric(
+        "Średnia Fixing II",
+        f"{np.mean(yesterday_df['fixing_2_pln_mwh']):.2f} zł",
+    )
+    st.metric(
+        "Średnia CEN",
+        f"{np.mean(yesterday_df['cen_pln_mwh']):.2f} zł",
+    )
 
 granularity = st.segmented_control(
     "Interwał",
@@ -96,9 +176,20 @@ granularity = st.segmented_control(
     default="15 Minut",
     label_visibility="collapsed",
 )
-tab1, tab2 = st.tabs([f"{string_today}", f"{string_yesterday}"])
 
-with tab1:
+tab_tommorrow, tab_today, tab_yesterday = st.tabs(
+    [string_tommorow, string_today, string_yesterday], default=string_today
+)
+
+with tab_tommorrow:
+    if granularity == "15 Minut":
+        fig = plot_price_indices_contracting_status_15min(tommorow_df)
+    else:
+        fig = plot_price_indices_contracting_status_1h(tommorow_df_1h)
+
+    st.plotly_chart(fig, use_container_width=True)
+
+with tab_today:
     if granularity == "15 Minut":
         fig = plot_price_indices_contracting_status_15min(today_df)
     else:
@@ -107,10 +198,10 @@ with tab1:
     st.plotly_chart(fig, use_container_width=True)
 
 
-with tab2:
+with tab_yesterday:
     if granularity == "15 Minut":
         fig = plot_price_indices_contracting_status_15min(yesterday_df)
     else:
-        fig = plot_price_indices_contracting_status_1h(yesterday_df_df_1h)
+        fig = plot_price_indices_contracting_status_1h(yesterday_df_1h)
 
     st.plotly_chart(fig, use_container_width=True)
