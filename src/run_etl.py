@@ -108,7 +108,7 @@ if __name__ == "__main__":
 
     scheduler.add_job(
         task_forecast_pipeline,
-        trigger=CronTrigger(hour="7-12", minute="*/15", timezone=WARSAW_TZ),
+        trigger=CronTrigger(hour="7-12", minute="2,17,32,47", timezone=WARSAW_TZ),
         id="daily_forecast",
         name="Prognoza Fixing I (pobranie + prognoza co 15 min)",
         coalesce=True,
