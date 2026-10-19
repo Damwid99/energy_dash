@@ -20,6 +20,8 @@ automatycznie generowane podsumowania najważniejszych wydarzeń rynkowych.
 - analizę zmienności cen i profili dobowych,
 - analizę generacji farm wiatrowych i fotowoltaicznych,
 - współczynniki wykorzystania mocy oraz jakość prognoz,
+- prognozy godzinowych cen Fixing I na kolejną dobę,
+- optymalizacja pracy magazynu energii na podstawie prognoz cen,
 - aktualności dotyczące energii, gazu, ropy i uprawnień do emisji CO2,
 - krótkoterminowe i długoterminowe podsumowania newsów generowane przez LLM.
 
@@ -35,9 +37,21 @@ oraz analiza okresów PEAK i BASE.
 **Analiza aktywów wytwórczych**  
 Mapa przykładowych farm OZE, dane generacji, prognozy i metryki błędu.
 
+**Magazyn energii**
+
+Wyznaczanie harmonogramu ładowania i rozładowania magazynu z wykorzystaniem
+optymalizacji matematycznej. Możesz zmienić moc, pojemność, początkowy stan
+naładowania, minimalny końcowy SoC oraz sprawność round-trip. Dostępne są
+strategie oparte na prognozie, idealnej wiedzy o cenach oraz heurystyce
+wykorzystującej ceny z poprzedniej doby.
+
 **Newsy rynkowe**  
 Wyselekcjonowane informacje rynkowe podzielone według horyzontu wpływu
 na ceny energii.
+
+Prognozy Fixing I są generowane dla kolejnej doby przez model ML zarządzany
+w MLflow. Po publikacji cen rzeczywistych mogą służyć do porównania prognozy
+z realizacją, a w widoku magazynu są podstawą strategii prognostycznej.
 
 ### Dane i aktualizacja
 
@@ -67,6 +81,8 @@ Projekt został zbudowany z wykorzystaniem:
 - Pandas,
 - Plotly,
 - APScheduler,
+- PuLP i solver HiGHS do optymalizacji magazynu energii,
+- scikit-learn i MLflow do prognoz Fixing I,
 - LiteLLM i modeli językowych,
 - Docker Compose.
 

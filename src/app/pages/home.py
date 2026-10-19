@@ -4,7 +4,7 @@ import numpy as np
 from datetime import date, datetime
 import plotly.graph_objects as go
 
-from src.app.layout import render_page_header
+from src.app.layout import render_page_header, render_page_caution
 from src.app.data_provider import get_energy_prices, get_energy_prices_and_forecasts
 from src.app.components.charts import (
     plot_price_indices_contracting_status_15min,
@@ -12,6 +12,14 @@ from src.app.components.charts import (
 )
 
 render_page_header("Informacje bieżące")
+
+text = """
+Prezentowane prognozy mają charakter wyłącznie poglądowy,
+zostały przygotowane na ograniczonej próbce danych i **nie stanowią** rekomendacji handlowej.
+Analiza danych dostępna jest na [GitHubie](https://github.com/Damwid99/energy_forecasts).
+"""
+render_page_caution("UWAGA", text)
+
 now = pd.Timestamp.now(tz="Europe/Warsaw").floor("D")
 
 start_local = now - pd.Timedelta(days=1)
@@ -94,10 +102,27 @@ col1, col2, col3 = st.columns(3)
 
 with col1:
     st.subheader(string_tommorow)
-    if tommorow_df["fixing_1_pln_mwh"].isna().any():
+
+    has_real = tommorow_df_1h["fixing_1_pln_mwh"].notna().all()
+    has_forecast = tommorow_df_1h["fixing_1_forecast_pln_mwh"].notna().any()
+
+    if has_real and has_forecast:
+        delta_vector, delta_mean = calculate_delta(
+            tommorow_df_1h["fixing_1_pln_mwh"], tommorow_df_1h["fixing_1_forecast_pln_mwh"], 2
+        )
+        st.metric(
+            "Średnia Fixing I",
+            np.round(np.mean(tommorow_df_1h["fixing_1_pln_mwh"]), 2),
+            delta_mean,
+            chart_data=delta_vector,
+            chart_type="area",
+            border=True,
+            help="Wartość delty wyliczona na podstawie wyznaczonej prognozy Fixing I (true-real)",
+        )
+    elif has_forecast:
         st.metric(
             "Prognoza Fixing I",
-            np.round(np.mean(tommorow_df["fixing_1_forecast_pln_mwh"]), 2),
+            np.round(np.mean(tommorow_df_1h["fixing_1_forecast_pln_mwh"]), 2),
             0,
             chart_data=np.zeros(24),
             chart_type="area",
@@ -105,22 +130,15 @@ with col1:
             help="Średnia dobowa prognozy Fixing I",
         )
     else:
-        delta_vector, delta_mean = calculate_delta(
-            tommorow_df_1h["fixing_1_pln_mwh"], tommorow_df_1h["fixing_1_forecast_pln_mwh"], 2
+        st.info(
+            "Brak cen rzeczywistych i brak prognoz. Prognoza na jutro się jeszcze nie wykonała (brak prognoz PSE). Proszę spróbować za kilka minut..."
         )
+
+    if tommorow_df_1h["fixing_2_pln_mwh"].notna().any():
         st.metric(
-            "Średnia Fixing I",
-            np.round(np.mean(tommorow_df["fixing_1_pln_mwh"]), 2),
-            delta_mean,
-            chart_data=delta_vector,
-            chart_type="area",
-            border=True,
-            help="Wartość delty wyliczona na podstawie wyznaczonej prognozy Fixing I (true-real)",
+            "Średnia Fixing II",
+            f"{np.mean(tommorow_df_1h['fixing_2_pln_mwh']):.2f} zł",
         )
-    st.metric(
-        "Średnia Fixing II",
-        f"{np.mean(tommorow_df['fixing_2_pln_mwh']):.2f} zł",
-    )
 
 
 with col2:

@@ -1,7 +1,7 @@
 import streamlit as st
 
 from src.app.data_provider import get_news_articles, get_news_digest, get_dates_of_summaries
-from src.app.layout import render_page_header
+from src.app.layout import render_page_header, render_page_caution
 from src.app.components.utils import render_items, ICON, COMMODITY
 
 
@@ -32,10 +32,11 @@ if digest is None:
     st.info("Brak podsumowania dla wybranego dnia.")
     st.stop()
 
-st.caption(
-    f"Wygenerowano: {digest['generated_utc']:%Y-%m-%d %H:%M} UTC | model: {digest['model']} | "
-    f"artykułów: {digest['n_articles']}"
-)
+text = f"""
+Analiza artykułów została wygenerowana przez AI. Analiza nie stanowi rekomendacji biznesowej - ma charakter wyłącznie poglądowy. \n
+Wygenerowano: {digest["generated_utc"]:%Y-%m-%d %H:%M} UTC | model: {digest["model"]} | artykułów: {digest["n_articles"]}
+"""
+render_page_caution("UWAGA", text)
 
 tab1, tab2 = st.tabs(["Short term", "Long term"])
 with tab1:

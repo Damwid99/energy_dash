@@ -35,16 +35,24 @@ Energy Dash pobiera, przechowuje i wizualizuje dane związane z polskim rynkiem 
 - artykuły rynkowe z Google News RSS,
 - strukturyzowane podsumowania newsów generowane przez model LLM,
 - przykładowe dane generacji i prognoz dla farm wiatrowych i fotowoltaicznych.
+- prognozy godzinowych cen Fixing I wyznaczane przez model ML [repozytorium z analizami](https://github.com/Damwid99/energy_forecasts),
+- optymalizację harmonogramu pracy magazynu energii na podstawie prognoz cen.
 
 Demo aplikacji możesz znaleźć na [Energy Dashboard](https://energy.damwid.eu)
-Interfejs ma cztery główne obszary analityczne:
+Interfejs ma pięć głównych obszarów analitycznych:
 
 | Widok | Zawartość |
 | --- | --- |
 | **Strona główna** | Bieżące i wczorajsze średnie Fixing I, Fixing II i CEN oraz wykresy 15-minutowe/godzinowe. |
 | **Analiza cenowa** | Zakres dat, wybór indeksu, statystyki, profil dobowy, spread, heatmapa i PEAK5/BASE. |
 | **Analiza asetów wytwórczych** | Mapa farm, moc zainstalowana, capacity factor, generacja, prognoza i metryki błędu. |
+| **Magazyn energii** | Optymalizacja ładowania i rozładowania magazynu dla wybranej mocy, pojemności, sprawności i początkowego SoC. |
 | **Newsy rynkowe** | Digest podzielony na wpływ krótkoterminowy i długoterminowy, z linkami do źródeł. |
+
+Prognoza Fixing I jest tworzona dla kolejnej doby przez model oznaczony jako
+`champion` w MLflow. Widok główny pokazuje prognozę obok cen rzeczywistych,
+gdy te są już dostępne, a widok magazynu wykorzystuje ją do wyznaczenia
+harmonogramu przed sesją rynku.
 
 ## Architektura
 
@@ -57,6 +65,8 @@ flowchart LR
 	CSV[data/raw/*.csv] --> SEED[import_renewables.py]
 	SEED --> DB[(PostgreSQL)]
 	ETL --> DB
+	DB --> FORECAST[Model Fixing I + MLflow]
+	FORECAST --> DB
 	DB --> DP[data_provider.py]
 	DP --> APP[Streamlit dashboard]
 ```
@@ -121,6 +131,11 @@ Worker przy starcie:
 3. pobiera CEN z ostatnich 2 dni,
 4. pobiera RCE i dane TGE z ostatnich kilku dni,
 5. uruchamia scheduler.
+
+Pipeline prognostyczny uruchamiany przez workera pobiera dane treningowe,
+ładuje wersję modelu `champion` z MLflow, wyznacza godzinowe prognozy Fixing I
+na kolejną dobę i zapisuje je w bazie. Dla dni historycznych działa również
+ewaluacja prognoz po pojawieniu się cen rzeczywistych.
 
 Pierwsze zasilenie może potrwać, bo część źródeł jest pobierana przez sieć. Sam Streamlit może wystartować wcześniej, ale do czasu zapisania danych niektóre widoki będą puste.
 
@@ -304,6 +319,9 @@ src/
 │   ├── data_provider.py        # zapytania SQL, cache i normalizacja danych
 │   ├── components/charts.py    # wykresy Plotly
 │   └── pages/                  # ekrany dashboardu
+├── ml/
+│   ├── bess/                   # parametry baterii, optymalizacja i strategie
+│   └── fix_I_forecast/         # cechy, trening, predykcja i ewaluacja Fixing I
 ├── common/
 │   ├── config.py               # .env i DATABASE_URL
 │   ├── database.py             # silnik SQLAlchemy i sesje
@@ -328,6 +346,7 @@ Worker wykonuje zadania od razu po starcie, a następnie pracuje w strefie `Euro
 | --- | --- | --- |
 | CEN w szczycie | co 30 minut, 07:00–18:00 | ostatnie 2 dni |
 | CEN poza szczytem | co godzinę, pozostałe godziny | ostatnie 2 dni |
+| Prognoza Fixing I | co 15 minut, 07:00–12:00 | prognoza na kolejną dobę; ewaluacja po publikacji cen rzeczywistych |
 | RCE + TGE | codziennie o 14:00 | RCE: 5 dni, TGE: 3 dni |
 | News digest | co godzinę 07:00–11:00, tylko gdy brak digestu | RSS z ostatnich 2 dni |
 
@@ -340,6 +359,7 @@ W bazie wszystkie znaczniki czasu są przechowywane w UTC. UI konwertuje je do `
 | Tabela | Zawartość | Klucz / deduplikacja |
 | --- | --- | --- |
 | `energy_prices` | RCE, CEN, Fixing I/II, wolumeny i status KSE w interwałach 15-minutowych | `datetime_utc` |
+| `da_price_forecasts` | Godzinowe prognozy Fixing I, wersja modelu i identyfikator runu MLflow | `(datetime_utc, model_version)` |
 | `renewable_farms` | Metadane farm, technologia, moc, region i współrzędne | `id`, unikalny `code` |
 | `renewable_generation` | Generacja rzeczywista i prognozowana farm | `(farm_id, datetime_utc)` |
 | `news_articles` | Artykuły RSS, źródło, temat, link i pobrana treść | unikalny `url` |
@@ -426,6 +446,8 @@ Następnie ponownie załaduj dane OZE i ewentualnie uruchom seedery PSE/TGE/news
 
 - dane OZE w `data/raw/` są przykładowe, a nie feedem produkcyjnym,
 - TGE udostępnia ograniczone okno historii i jest parsowane z HTML,
+- prognoza Fixing I wymaga dostępnego modelu `champion` w MLflow oraz kompletu danych wejściowych,
+- optymalizacja magazynu jest modelem demonstracyjnym; wyniki zależą od parametrów baterii i jakości prognozy,
 - nie ma migracji schematu, testów automatycznych ani obserwowalności produkcyjnej,
 - digest zależy od zewnętrznego providera LLM i dostępności treści artykułów,
 - domyślne dane uwierzytelniające służą wyłącznie lokalnemu developmentowi,
