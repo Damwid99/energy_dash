@@ -9,14 +9,14 @@ from sklearn.base import clone
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
 
-from src.common.database import engine
-from src.ml.dataset import (
+from ml.fix_I_forecast.dataset import (
     QUERY,
     get_data_from_db,
     get_start_end_date,
     transform_data_for_model,
 )
-from src.ml.features import ALL_COLUMNS, FEATURES_VERSION, TARGET
+from ml.fix_I_forecast.features import ALL_COLUMNS, FEATURES_VERSION, TARGET
+from src.common.database import engine
 from src.models_db.forecasts import DAPriceForecast
 
 load_dotenv()

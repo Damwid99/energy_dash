@@ -4,8 +4,8 @@ import pandas as pd
 from sqlalchemy import text
 from sqlalchemy.sql.elements import TextClause
 
+from ml.fix_I_forecast.features import ALL_COLUMNS, TARGET, make_training_frame
 from src.common.database import engine
-from src.ml.features import ALL_COLUMNS, TARGET, make_training_frame
 
 QUERY = text("""
     SELECT *

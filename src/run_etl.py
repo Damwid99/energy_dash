@@ -16,7 +16,7 @@ from src.etl.extract.pse_api import (
 from src.etl.extract.tge_api import fetch_and_save_tge
 from src.etl.transform.news_digest import digest_exists, generate_digest, today_utc
 from src.models_db import energy, news, renewables, forecasts
-from src.ml.evaluation import evaluate_forecasts
+from ml.fix_I_forecast.evaluation import evaluate_forecasts
 
 WARSAW_TZ = ZoneInfo("Europe/Warsaw")
 NEWS_HOUR = 7
@@ -25,7 +25,7 @@ _news_lock = threading.Lock()
 
 
 def task_daily_forecast():
-    from src.ml.predictor import run_daily_forecast
+    from ml.fix_I_forecast.predictor import run_daily_forecast
 
     print("[ETL] Uruchamianie prognozy cen Fixing I...")
     try:
