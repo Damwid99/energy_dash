@@ -50,3 +50,9 @@ def render_page_header(title: str, subtitle: str = "", icon: str = ""):
     if subtitle:
         st.caption(subtitle)
     st.divider()
+
+
+def render_page_caution(badge_text, text):
+    st.badge(badge_text, icon="⚠️", color="orange")
+    st.caption(text)
+    st.divider()
