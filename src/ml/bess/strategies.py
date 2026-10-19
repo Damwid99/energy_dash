@@ -117,6 +117,7 @@ def naive_strategy(
 class DayResult:
     schedules: dict[str, pd.DataFrame]
     summary: pd.DataFrame
+    prices: pd.DataFrame
     revenue_basis: Literal["real", "forecast"]
     notes: list[str]
 
@@ -145,6 +146,7 @@ def run_day_strategies(
         return DayResult(
             schedules={},
             summary=pd.DataFrame(columns=["revenue_pln", "n_cycles", "capture_rate"]),
+            prices=day_df,
             revenue_basis="forecast",
             notes=["Brak kompletnej prognozy cen dla wybranego dnia."],
         )
@@ -170,8 +172,6 @@ def run_day_strategies(
             schedules[PERFECT_FORESIGHT] = sched_pf
         except RuntimeError as err:
             notes.append(f"Strategia '{PERFECT_FORESIGHT}' zgłosiła błąd solvera: {err}")
-    else:
-        notes.append(f"Pominięto '{PERFECT_FORESIGHT}' - brak kompletnych cen rzeczywistych.")
 
     # strategia Naive
 
@@ -206,7 +206,13 @@ def run_day_strategies(
                 f"nieudane testy: {', '.join(failed_checks)}"
             )
 
-    price_col_for_settlement = "price_real" if has_real else "price_forecast"
+    if has_real:
+        price_col_for_settlement = "price_real"
+    else:
+        price_col_for_settlement = "price_forecast"
+        notes.append(
+            "Brak cen rzeczywistych dla tego dnia. Przychód liczony na podstawie prognozy cen."
+        )
     summary_rows = {}
 
     for strat_name, sched in schedules.items():
@@ -233,6 +239,7 @@ def run_day_strategies(
     return DayResult(
         schedules=schedules,
         summary=summary_df,
+        prices=day_df,
         revenue_basis=revenue_basis,
         notes=notes,
     )
