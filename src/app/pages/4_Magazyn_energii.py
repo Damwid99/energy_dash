@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 
-from src.app.layout import render_page_header
+from src.app.layout import render_page_header, render_page_caution
 from src.app.data_provider import get_data_for_bess
 from src.ml.bess.prices import prepare_price_data
 from src.ml.bess.strategies import run_day_strategies, FORECAST_BASED, PERFECT_FORESIGHT, NAIVE
@@ -9,6 +9,13 @@ from src.ml.bess.battery import BatteryParams
 from src.app.components.charts import plot_strategy_schedule
 
 render_page_header("Magazyn Energii")
+
+text = """
+Prezentowane prognozy mają charakter wyłącznie poglądowy,
+zostały przygotowane na ograniczonej próbce danych i **nie stanowią** rekomendacji handlowej.
+Analiza danych dostępna jest na [GitHubie](https://github.com/Damwid99/energy_forecasts).
+"""
+render_page_caution("UWAGA", text)
 
 now = pd.Timestamp.now(tz="Europe/Warsaw").floor("D")
 

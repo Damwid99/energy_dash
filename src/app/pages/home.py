@@ -12,6 +12,14 @@ from src.app.components.charts import (
 )
 
 render_page_header("Informacje bieżące")
+
+text = """
+Prezentowane prognozy mają charakter wyłącznie poglądowy,
+zostały przygotowane na ograniczonej próbce danych i **nie stanowią** rekomendacji handlowej.
+Analiza danych dostępna jest na [GitHubie](https://github.com/Damwid99/energy_forecasts).
+"""
+render_page_caution("UWAGA", text)
+
 now = pd.Timestamp.now(tz="Europe/Warsaw").floor("D")
 
 start_local = now - pd.Timedelta(days=1)

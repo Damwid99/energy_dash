@@ -4,7 +4,7 @@ import numpy as np
 from datetime import date, datetime
 import plotly.graph_objects as go
 import plotly.express as px
-from src.app.layout import render_page_header
+from src.app.layout import render_page_header, render_page_caution
 from src.app.data_provider import (
     get_assets_metadata,
     get_assets_capacity_factors,
@@ -12,6 +12,12 @@ from src.app.data_provider import (
 )
 
 render_page_header("Analiza asetów wytwórczych")
+
+text = """
+Prezentowane dane zostały wygenerowane automatycznie.
+Nie mają pokrycia z rzeczywistością.
+"""
+render_page_caution("UWAGA", text)
 
 asets_metadata = get_assets_metadata()
 asets_capacity_factors = get_assets_capacity_factors()
@@ -153,16 +159,11 @@ if st.session_state.get("show_details"):
 
         monthly_cf = month_data["generation_mwh"].sum() / (farm["capacity_mw"] * len(month_data))
 
-        col1, col2 = st.columns(2)
-        with col1:
-            st.metric("CF miesięczny", f"{monthly_cf:.2f}")
+        st.metric("CF miesięczny", f"{monthly_cf:.2f}")
 
         daily_cf = (
             month_data["generation_mwh"].groupby(month_data.index.date).sum() / farm["capacity_mw"]
         )
-
-        with col2:
-            st.metric("Średni CF dzienny", f"{daily_cf.mean():.2f}")
 
         st.markdown("### CF dzienny (wykres)")
 
