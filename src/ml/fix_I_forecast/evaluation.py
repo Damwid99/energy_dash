@@ -3,9 +3,9 @@ import pandas as pd
 from mlflow import MlflowClient
 from sqlalchemy import text
 
+from ml.fix_I_forecast.features import LOCAL_TZ
+from ml.fix_I_forecast.predictor import init_mlflow
 from src.common.database import engine
-from src.ml.features import LOCAL_TZ
-from src.ml.predictor import init_mlflow
 
 PEAK_HOURS_LOCAL = (18, 19, 20, 21)
 
