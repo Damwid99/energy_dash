@@ -4,15 +4,15 @@ import mlflow
 import pandas as pd
 from sklearn.base import clone
 
-from ml.fix_I_forecast.dataset import (
+from src.ml.fix_I_forecast.dataset import (
     QUERY,
     WARSAW_TZ,
     get_data_from_db,
     get_start_end_date,
     transform_data_for_model,
 )
-from ml.fix_I_forecast.features import ALL_COLUMNS, FEATURES_VERSION, TARGET
-from ml.fix_I_forecast.predictor import (
+from src.ml.fix_I_forecast.features import ALL_COLUMNS, FEATURES_VERSION, TARGET
+from src.ml.fix_I_forecast.predictor import (
     MODEL_NAME,
     WINDOW_DAYS,
     init_mlflow,
