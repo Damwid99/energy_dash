@@ -112,7 +112,7 @@ with col1:
         )
         st.metric(
             "Średnia Fixing I",
-            np.round(np.mean(tommorow_df_1h["fixing_1_pln_mwh"]), 2),
+            f"{np.round(np.mean(tommorow_df_1h['fixing_1_pln_mwh']), 2)} zł",
             delta_mean,
             chart_data=delta_vector,
             chart_type="area",
@@ -122,7 +122,7 @@ with col1:
     elif has_forecast:
         st.metric(
             "Prognoza Fixing I",
-            np.round(np.mean(tommorow_df_1h["fixing_1_forecast_pln_mwh"]), 2),
+            f"{np.round(np.mean(tommorow_df_1h['fixing_1_forecast_pln_mwh']), 2)} zł",
             0,
             chart_data=np.zeros(24),
             chart_type="area",
@@ -148,7 +148,7 @@ with col2:
     )
     st.metric(
         "Średnia Fixing I",
-        np.round(np.mean(today_df["fixing_1_pln_mwh"]), 2),
+        f"{np.round(np.mean(today_df['fixing_1_pln_mwh']), 2)} zł",
         delta_mean,
         chart_data=delta_vector,
         chart_type="area",
@@ -172,7 +172,7 @@ with col3:
     )
     st.metric(
         "Średnia Fixing I",
-        np.round(np.mean(yesterday_df["fixing_1_pln_mwh"]), 2),
+        f"{np.round(np.mean(yesterday_df['fixing_1_pln_mwh']), 2)} zł",
         delta_mean,
         chart_data=delta_vector,
         chart_type="area",

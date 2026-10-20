@@ -43,7 +43,7 @@ def get_min_max_date(index_name: str) -> tuple[pd.Timestamp | None, pd.Timestamp
     return min_date_local, max_date_local
 
 
-@st.cache_data(ttl=900)
+@st.cache_data(ttl="5m")
 def get_energy_prices(
     start_dt_utc: pd.Timestamp,
     end_dt_utc: pd.Timestamp,
@@ -262,7 +262,7 @@ def get_dates_of_summaries() -> list[date]:
     return [r[0] for r in rows]
 
 
-@st.cache_data(ttl=900)
+@st.cache_data(ttl="5m")
 def get_energy_prices_and_forecasts(
     start_dt_utc: pd.Timestamp,
     end_dt_utc: pd.Timestamp,
@@ -318,7 +318,7 @@ def get_energy_prices_and_forecasts(
     return df
 
 
-@st.cache_data(ttl=900)
+@st.cache_data(ttl="5m")
 def get_data_for_bess(
     start_dt_utc: str,
     end_dt_utc: str,

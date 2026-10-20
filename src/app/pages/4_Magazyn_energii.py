@@ -46,7 +46,7 @@ strategies_info = {
 }
 
 
-@st.cache_data(max_entries=10)
+@st.cache_data(max_entries=10, ttl="5m")
 def get_cached_strategies(
     start_iso: str,
     end_iso: str,
