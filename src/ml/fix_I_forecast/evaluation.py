@@ -3,11 +3,14 @@ import pandas as pd
 from mlflow import MlflowClient
 from sqlalchemy import text
 
-from ml.fix_I_forecast.features import LOCAL_TZ
-from ml.fix_I_forecast.predictor import init_mlflow
+from src.common.config import get_settings
 from src.common.database import engine
+from src.common.timeutils import to_local_tz
+from src.ml.fix_I_forecast.predictor import init_mlflow
 
-PEAK_HOURS_LOCAL = (18, 19, 20, 21)
+settings = get_settings()
+
+PEAK_HOURS_LOCAL = settings.forecast.peak_hours_local
 
 EVAL_QUERY = text("""
 WITH hourly_energy AS (
@@ -36,7 +39,7 @@ def compute_metrics(
 ) -> dict[str, float]:
     err = y_pred - y_true
     abs_err = err.abs()
-    peak = np.isin(y_true.index.tz_convert(LOCAL_TZ).hour, PEAK_HOURS_LOCAL)
+    peak = np.isin(to_local_tz(y_true).index.hour, PEAK_HOURS_LOCAL)
 
     m = {
         "mae": float(abs_err.mean()),

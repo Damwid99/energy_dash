@@ -7,13 +7,13 @@ import holidays
 import numpy as np
 import pandas as pd
 
+from src.common.timeutils import ensure_utc_index, to_local_tz
+
 FEATURES_VERSION = "1"
 RANDOM_STATE = 42
 
 START_DATE = "2026-08-01"
 END_DATE = "2026-10-07"
-
-LOCAL_TZ = "Europe/Warsaw"
 
 TARGET = "fixing_1_pln_mwh"
 DEMAND = "demand_fcst_pse"
@@ -45,16 +45,16 @@ FEATURE_SETS: dict[str, list[str]] = {
 }
 
 
-def _ensure_utc_index(df: pd.DataFrame) -> pd.DataFrame:
-    data = df.copy()
-    idx = pd.DatetimeIndex(data.index)
-    data.index = idx.tz_localize("UTC") if idx.tz is None else idx.tz_convert("UTC")
-    return data.sort_index()
+# def _ensure_utc_index(df: pd.DataFrame) -> pd.DataFrame:
+#     data = df.copy()
+#     idx = pd.DatetimeIndex(data.index)
+#     data.index = idx.tz_localize("UTC") if idx.tz is None else idx.tz_convert("UTC")
+#     return data.sort_index()
 
 
 def add_time_features(df: pd.DataFrame) -> pd.DataFrame:
     data = df.copy()
-    local = data.index.tz_convert(LOCAL_TZ)
+    local = to_local_tz(data).index
     hour = np.asarray(local.hour + local.minute / 60.0, dtype=float)
     dow = np.asarray(local.dayofweek)
 
@@ -81,7 +81,7 @@ def add_price_lags(df: pd.DataFrame, price: pd.Series) -> pd.DataFrame:
     data["price_lag_24"] = price.reindex(data.index - pd.Timedelta(hours=24)).to_numpy()
     data["price_lag_168"] = price.reindex(data.index - pd.Timedelta(hours=168)).to_numpy()
 
-    dow = np.asarray(data.index.tz_convert(LOCAL_TZ).dayofweek)
+    dow = np.asarray(to_local_tz(data).index.dayofweek)
     use_week = np.isin(dow, [0, 5, 6])
     data["price_lag_typeday"] = np.where(use_week, data["price_lag_168"], data["price_lag_24"])
     return data
@@ -105,7 +105,7 @@ def add_interactions(df: pd.DataFrame) -> pd.DataFrame:
 
 def make_training_frame(df: pd.DataFrame, dropna: bool = False) -> pd.DataFrame:
     data = df.copy()
-    data = _ensure_utc_index(df)
+    data = ensure_utc_index(df)
 
     price = data[TARGET]
     data = add_time_features(data)

@@ -5,6 +5,7 @@ import streamlit as st
 from sqlalchemy import text
 
 from src.common.database import SessionLocal, engine
+from src.common.timeutils import to_local_tz
 from src.models_db.news import NewsArticle, NewsDigest
 
 DEFAULT_ENERGY_COLUMNS = [
@@ -37,8 +38,8 @@ def get_min_max_date(index_name: str) -> tuple[pd.Timestamp | None, pd.Timestamp
     if pd.isna(min_date_raw) or pd.isna(max_date_raw):
         return None, None
 
-    min_date_local = pd.to_datetime(min_date_raw).tz_convert("Europe/Warsaw")
-    max_date_local = pd.to_datetime(max_date_raw).tz_convert("Europe/Warsaw")
+    min_date_local = to_local_tz(pd.to_datetime(min_date_raw))
+    max_date_local = to_local_tz(pd.to_datetime(max_date_raw))
 
     return min_date_local, max_date_local
 
@@ -76,7 +77,7 @@ def get_energy_prices(
     else:
         df["datetime_utc"] = df["datetime_utc"].dt.tz_convert("UTC")
 
-    df["datetime_local"] = df["datetime_utc"].dt.tz_convert("Europe/Warsaw")
+    df["datetime_local"] = to_local_tz(df["datetime_utc"])
     df.set_index("datetime_local", inplace=True)
     df.drop(columns=["datetime_utc"], inplace=True)
 
@@ -111,7 +112,7 @@ def get_kse_contracting_status(
     else:
         df["datetime_utc"] = df["datetime_utc"].dt.tz_convert("UTC")
 
-    df["datetime_local"] = df["datetime_utc"].dt.tz_convert("Europe/Warsaw")
+    df["datetime_local"] = to_local_tz(df["datetime_utc"])
     df.set_index("datetime_local", inplace=True)
     df.drop(columns=["datetime_utc"], inplace=True)
 
@@ -200,7 +201,7 @@ def get_asset_geneartion_and_prices(asset_id: int, dropna: bool = True) -> pd.Da
     else:
         df["datetime_utc"] = df["datetime_utc"].dt.tz_convert("UTC")
 
-    df["datetime_local"] = df["datetime_utc"].dt.tz_convert("Europe/Warsaw")
+    df["datetime_local"] = to_local_tz(df["datetime_utc"])
     df.set_index("datetime_local", inplace=True)
     df.drop(columns=["datetime_utc"], inplace=True)
 
