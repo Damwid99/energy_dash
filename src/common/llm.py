@@ -1,13 +1,15 @@
 import json
-import os
 import re
 
 import litellm
 from pydantic import BaseModel, ValidationError
 
-API_BASE = os.getenv("OLLAMA_API_BASE", "http://localhost:11434")
-MODEL = os.getenv("LLM_MODEL", "ollama_chat/gpt-oss:20b-cloud")
-USE_RESPONSE_FORMAT = os.getenv("LLM_USE_RESPONSE_FORMAT", "1") == "1"
+from src.config.settings import get_settings
+
+settings = get_settings()
+API_BASE = settings.llm.api_base
+MODEL = settings.llm.model
+USE_RESPONSE_FORMAT = settings.llm.use_response_format
 
 
 def _extract_json(text: str) -> str:

@@ -27,6 +27,7 @@ dependencies = [
     "psycopg[binary]>=3.3.6",
     "pulp>=4.0.1",
     "pydantic>=2.13.5",
+    "pydantic-settings>=2.15.0",
     "python-dotenv>=1.2.3",
     "pytz>=2026.4",
     "requests>=2.34.2",
@@ -54,3 +55,12 @@ build-backend = "uv_build"
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
+
+[tool.mypy]
+python_version = "3.14"
+exclude = [
+    "^notebooks/",
+    "^data/",
+]
+ignore_missing_imports = true
+check_untyped_defs = true

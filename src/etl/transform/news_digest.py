@@ -1,19 +1,20 @@
-import os
 from datetime import UTC, date, datetime, timedelta
-from zoneinfo import ZoneInfo
 
 import trafilatura
 from googlenewsdecoder import gnewsdecoder
 
 from src.common.database import SessionLocal
 from src.common.llm import MODEL, ask_structured
+from src.config.settings import get_settings
 from src.models_db.news import NewsArticle, NewsDigest
 from src.schemas.news import Digest, Selection
 
-WARSAW_TZ = ZoneInfo("Europe/Warsaw")
-TITLES_LIMIT = int(os.getenv("NEWS_TITLES_LIMIT", "100"))
-SELECT_MAX = int(os.getenv("NEWS_SELECT_MAX", "15"))
-BODY_MAX = int(os.getenv("NEWS_BODY_MAX_CHARS", "4000"))
+settings = get_settings()
+
+LOCAL_TZ = settings.tz
+TITLES_LIMIT = settings.news.titles_limit
+SELECT_MAX = settings.news.select_max
+BODY_MAX = settings.news.body_max_chars
 
 SELECT_PROMPT = f"""Jesteś analitykiem rynku energii w Polsce. Dostajesz ponumerowaną listę nagłówków
 z ostatnich dwóch dni (energia elektryczna, gaz, ropa, CO2).
@@ -91,7 +92,7 @@ def generate_digest(force: bool = False):
 
         print(f"[DIGEST] Etap 1: wybór z {len(articles)} tytułów ({MODEL})...")
         lines = [
-            f"[{a.id}] {a.published_utc.astimezone(WARSAW_TZ):%d.%m %H:%M} | {a.topic} | "
+            f"[{a.id}] {a.published_utc.astimezone(LOCAL_TZ):%d.%m %H:%M} | {a.topic} | "
             f"{a.title} — {a.source or '?'}"
             for a in articles
         ]
@@ -116,7 +117,7 @@ def generate_digest(force: bool = False):
                 f"[{art.id}] {art.title} ({art.source or '?'}, horyzont: {horizon})\n{body}"
             )
 
-        now_pl = datetime.now(WARSAW_TZ)
+        now_pl = datetime.now(LOCAL_TZ)
         digest = ask_structured(
             DIGEST_PROMPT,
             f"Dziś jest {now_pl:%Y-%m-%d %H:%M}.\n\n" + "\n\n---\n\n".join(blocks),

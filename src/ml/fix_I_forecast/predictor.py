@@ -1,34 +1,32 @@
-import os
-from zoneinfo import ZoneInfo
-
 import mlflow
 import pandas as pd
-from dotenv import load_dotenv
 from mlflow import MlflowClient
 from sklearn.base import clone
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
 
-from ml.fix_I_forecast.dataset import (
+from src.common.database import engine
+from src.common.timeutils import to_local_tz
+from src.config.settings import get_settings
+from src.ml.fix_I_forecast.dataset import (
     QUERY,
     get_data_from_db,
     get_start_end_date,
     transform_data_for_model,
 )
-from ml.fix_I_forecast.features import ALL_COLUMNS, FEATURES_VERSION, TARGET
-from src.common.database import engine
+from src.ml.fix_I_forecast.features import ALL_COLUMNS, FEATURES_VERSION, TARGET
 from src.models_db.forecasts import DAPriceForecast
 
-load_dotenv()
+settings = get_settings()
 
-WARSAW_TZ = ZoneInfo("Europe/Warsaw")
-MODEL_NAME = "da_price_fixing1"
-MODEL_ALIAS = "champion"
-PROD_EXPERIMENT = "da_price_fixing1_prod"
-WINDOW_DAYS = 365
-MIN_TRAIN_DAYS = 20
+LOCAL_TZ = settings.tz
+MODEL_NAME = settings.mlflow.model_name
+MODEL_ALIAS = settings.mlflow.model_alias
+PROD_EXPERIMENT = settings.mlflow.prod_experiment
+WINDOW_DAYS = settings.forecast.window_days
+MIN_TRAIN_DAYS = settings.forecast.min_train_days
 
-MLFLOW_TRACKING_URI = os.environ.get("MLFLOW_TRACKING_URI", "http://localhost:5000")
+MLFLOW_TRACKING_URI = settings.mlflow.tracking_uri
 
 
 def init_mlflow():
@@ -43,7 +41,10 @@ def load_champion_model():
     client = MlflowClient()
 
     mv = client.get_model_version_by_alias(MODEL_NAME, MODEL_ALIAS)
-    run_tags = client.get_run(mv.run_id).data.tags
+    run_id = mv.run_id
+    if not run_id:
+        raise ValueError("Nie znaleziono run_id dla modelu!")
+    run_tags = client.get_run(run_id).data.tags
     model_features_version = run_tags.get("features_version")
     if model_features_version != FEATURES_VERSION:
         raise RuntimeError(
@@ -133,7 +134,7 @@ def run_daily_forecast(today: pd.Timestamp | None = None, dry_run: bool = False)
     init_mlflow()
     start_train, end_train, start_pred, end_pred = get_start_end_date(WINDOW_DAYS, today)
     expected_hours = int((end_pred - start_pred) / pd.Timedelta(hours=1))
-    target_date = start_pred.tz_convert(WARSAW_TZ).date()
+    target_date = to_local_tz(start_pred).date()
 
     mv = load_champion_model()
     if not dry_run and forecast_exists(start_pred, end_pred, mv.version, expected_hours):
@@ -164,6 +165,6 @@ if __name__ == "__main__":
     print(
         run_daily_forecast(
             dry_run=True,
-            today=pd.Timestamp(year=2026, day=13, month=10, hour=6).tz_localize(WARSAW_TZ),
+            today=pd.Timestamp(year=2026, day=13, month=10, hour=6).tz_localize(LOCAL_TZ),
         )
     )
