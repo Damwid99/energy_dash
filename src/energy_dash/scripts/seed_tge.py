@@ -19,9 +19,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from sqlalchemy import func
 
-from src.common.database import SessionLocal
-from src.etl.extract.tge_api import fetch_and_save_tge
-from src.models_db.energy import EnergyPrice
+from energy_dash.core.db import SessionLocal
+from energy_dash.features.market_prices.etl_tge import fetch_and_save_tge
+from energy_dash.features.market_prices.models import EnergyPrice
 
 
 def main():

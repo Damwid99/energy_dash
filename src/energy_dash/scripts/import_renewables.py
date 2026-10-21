@@ -5,11 +5,12 @@ import pandas as pd
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
 
-BASE_DIR = Path(__file__).resolve().parents[2]
+from energy_dash.core.db import Base, SessionLocal, engine
+from energy_dash.features.assets.models import RenewableFarm, RenewableGeneration
+
+BASE_DIR = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(BASE_DIR))
 
-from src.common.database import Base, SessionLocal, engine
-from src.models_db.renewables import RenewableFarm, RenewableGeneration
 
 RAW_DATA_DIR = BASE_DIR / "data" / "raw"
 

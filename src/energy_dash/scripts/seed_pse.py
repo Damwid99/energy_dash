@@ -14,14 +14,17 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from sqlalchemy import func
 
-from src.common.database import SessionLocal
-from src.etl.extract.pse_api import (
+from energy_dash.core.db import SessionLocal
+from energy_dash.features.market_prices.etl_pse import (
     fetch_and_save_cen,
-    fetch_and_save_oze,
-    fetch_and_save_oze_actuals,
     fetch_and_save_rce,
 )
-from src.models_db.energy import EnergyPrice, PseOzeActual, PseOzeForecast
+from energy_dash.features.market_prices.models import EnergyPrice
+from energy_dash.features.power_system.etl import (
+    fetch_and_save_oze,
+    fetch_and_save_oze_actuals,
+)
+from energy_dash.features.power_system.models import PseOzeActual, PseOzeForecast
 
 
 def seed_rce():

@@ -4,17 +4,19 @@ import mlflow
 import pandas as pd
 from sklearn.base import clone
 
-from src.ml.fix_I_forecast.dataset import (
-    QUERY,
-    WARSAW_TZ,
-    get_data_from_db,
+from energy_dash.core.settings import get_settings
+from energy_dash.features.forecasting.dataset import (
     get_start_end_date,
     transform_data_for_model,
 )
-from src.ml.fix_I_forecast.features import ALL_COLUMNS, FEATURES_VERSION, TARGET
-from src.ml.fix_I_forecast.predictor import (
+from energy_dash.features.forecasting.predictor import (
+    ALL_COLUMNS,
+    FEATURES_VERSION,
     MODEL_NAME,
+    QUERY,
+    TARGET,
     WINDOW_DAYS,
+    get_data_from_db,
     init_mlflow,
     load_champion_model,
     save_forecasts,
@@ -22,6 +24,7 @@ from src.ml.fix_I_forecast.predictor import (
 )
 
 BACKFILL_EXPERIMENT = "da_price_fixing1_backfill"
+LOCAL_TZ = get_settings().tz
 
 
 def _log_backfill_day(day, mv, train_set, preds: pd.Series) -> str:
@@ -54,7 +57,7 @@ def backfill_forecasts(first_day: date, last_day: date, dry_run: bool = False) -
     recipe = mlflow.sklearn.load_model(f"models:/{MODEL_NAME}/{mv.version}")
 
     def window_for(day) -> tuple:
-        today = (pd.Timestamp(day) - pd.Timedelta(days=1)).tz_localize(WARSAW_TZ)
+        today = (pd.Timestamp(day) - pd.Timedelta(days=1)).tz_localize(LOCAL_TZ)
         return get_start_end_date(WINDOW_DAYS, today)
 
     # jedno zapytanie na cały zakres
@@ -86,8 +89,8 @@ def backfill_forecasts(first_day: date, last_day: date, dry_run: bool = False) -
 
 
 if __name__ == "__main__":
-    today = pd.Timestamp.now(tz=WARSAW_TZ).date()
+    today = pd.Timestamp.now(tz=LOCAL_TZ).date()
     backfill_forecasts(today - timedelta(days=30), today)
-    from src.ml.fix_I_forecast.evaluation import evaluate_forecasts
+    from energy_dash.features.forecasting.evaluation import evaluate_forecasts  # noqa: E402
 
     evaluate_forecasts(days_back=45)

@@ -8,17 +8,13 @@ Idempotentny: artykuły deduplikowane po URL, digest dopisuje się jako nowy wpi
 """
 
 import argparse
-import sys
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from sqlalchemy import func
 
-from src.common.database import Base, SessionLocal, engine
-from src.etl.extract.news_rss import fetch_and_save_news
-from src.etl.transform.news_digest import generate_digest
-from src.models_db.news import NewsArticle, NewsDigest
+from energy_dash.core.db import Base, SessionLocal, engine
+from energy_dash.features.news.digest import generate_digest
+from energy_dash.features.news.etl_rss import fetch_and_save_news
+from energy_dash.features.news.models import NewsArticle, NewsDigest
 
 
 def seed_news():
