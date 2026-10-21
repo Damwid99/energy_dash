@@ -7,15 +7,6 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-
-from src.app.components.charts import (
-    _get_x_axis,
-    get_background_colors,
-    plot_price_indices_contracting_status_1h,
-    plot_price_indices_contracting_status_15min,
-    plot_strategy_schedule,
-)
-from src.app.components.utils import render_items
 from src.app.data_provider import (
     get_asset_geneartion_and_prices,
     get_data_for_bess,
@@ -27,7 +18,16 @@ from src.app.data_provider import (
     get_news_articles,
     get_news_digest,
 )
-from src.common.database import Base
+
+from energy_dash.core.db import Base
+from src.app.components.charts import (
+    _get_x_axis,
+    get_background_colors,
+    plot_price_indices_contracting_status_1h,
+    plot_price_indices_contracting_status_15min,
+    plot_strategy_schedule,
+)
+from src.app.components.utils import render_items
 from src.models_db import energy, forecasts, news, renewables  # noqa: F401
 from src.models_db.energy import EnergyPrice
 

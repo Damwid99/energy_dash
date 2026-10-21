@@ -7,9 +7,7 @@ from src.common.database import engine
 
 @st.cache_data(ttl="5m")
 def get_energy_prices_and_forecasts(
-    start_dt_utc: pd.Timestamp,
-    end_dt_utc: pd.Timestamp,
-    columns: list[str] | None = None,
+    start_dt_utc: pd.Timestamp, end_dt_utc: pd.Timestamp
 ) -> pd.DataFrame:
     """
     Pobiera z bazy dane cenowe wyłącznie dla wybranego przedziału czasowego (UTC),

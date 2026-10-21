@@ -1,10 +1,10 @@
 from zoneinfo import ZoneInfo
 
 import pytest
+import src.common.config as legacy_config
 from pydantic import SecretStr, ValidationError
 
-import src.common.config as legacy_config
-from src.config.settings import (
+from energy_dash.core.settings import (
     DataBaseSettings,
     ForecastSettings,
     LlmSettings,

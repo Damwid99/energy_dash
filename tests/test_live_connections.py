@@ -15,8 +15,8 @@ import requests
 from mlflow import MlflowClient
 from sqlalchemy import inspect, text
 
-from src.common.database import engine
-from src.config.settings import get_settings
+from energy_dash.core.db import engine
+from energy_dash.core.settings import get_settings
 from src.ml.fix_I_forecast.dataset import QUERY, get_data_from_db
 from src.ml.fix_I_forecast.features import FEATURES_VERSION
 from src.ml.fix_I_forecast.predictor import init_mlflow, load_champion_model

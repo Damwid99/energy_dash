@@ -8,7 +8,7 @@ from src.ml.bess.strategies import run_day_strategies, BessStrategy
 from src.ml.bess.battery import BatteryParams
 from src.app.components.charts import plot_strategy_schedule
 from src.ml.fix_I_forecast.predictor import load_champion_model, init_mlflow
-from src.config.settings import get_settings
+from energy_dash.core.settings import get_settings
 
 render_page_header("Magazyn Energii")
 

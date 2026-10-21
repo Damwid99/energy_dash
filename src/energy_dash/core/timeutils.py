@@ -3,7 +3,7 @@ from zoneinfo import ZoneInfo
 
 import pandas as pd
 
-from src.config.settings import get_settings
+WARSAW = ZoneInfo("Europe/Warsaw")
 
 
 def ensure_utc_index(df: pd.DataFrame) -> pd.DataFrame:
@@ -31,11 +31,11 @@ def ensure_utc_index(df: pd.DataFrame) -> pd.DataFrame:
     return data.sort_index()
 
 
-def to_local_tz(dt_or_df: datetime | pd.DataFrame | pd.Series, tz: ZoneInfo | None = None):
+def to_local_tz(dt_or_df: datetime | pd.DataFrame | pd.Series, tz: ZoneInfo = WARSAW):
     """
     Konwertuje obiekt czasu lub indeks DataFrame/Series na strefę lokalną
     """
-    target_tz = tz or get_settings().tz
+    target_tz = tz
 
     if isinstance(dt_or_df, (datetime, pd.Timestamp)):
         ts = pd.Timestamp(dt_or_df)

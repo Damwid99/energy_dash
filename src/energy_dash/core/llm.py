@@ -4,7 +4,7 @@ import re
 import litellm
 from pydantic import BaseModel, ValidationError
 
-from src.config.settings import get_settings
+from energy_dash.core.settings import get_settings
 
 settings = get_settings()
 API_BASE = settings.llm.api_base

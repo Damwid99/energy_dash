@@ -2,8 +2,8 @@ import pandas as pd
 import streamlit as st
 from sqlalchemy import text
 
-from src.common.database import engine
-from src.config.settings import get_settings
+from energy_dash.core.db import engine
+from energy_dash.core.settings import get_settings
 
 LOCAL_TZ = get_settings().tz
 

@@ -2,10 +2,10 @@ import numpy as np
 import pandas as pd
 from mlflow import MlflowClient
 from sqlalchemy import text
-
 from src.common.config import get_settings
-from src.common.database import engine
-from src.common.timeutils import to_local_tz
+
+from energy_dash.core.db import engine
+from energy_dash.core.timeutils import to_local_tz
 from src.ml.fix_I_forecast.predictor import init_mlflow
 
 settings = get_settings()

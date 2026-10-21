@@ -3,10 +3,10 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 from sqlalchemy import text
 from sqlalchemy.sql.elements import TextClause
-
 from src.common.config import get_settings
-from src.common.database import engine
-from src.common.timeutils import to_local_tz
+
+from energy_dash.core.db import engine
+from energy_dash.core.timeutils import to_local_tz
 from src.ml.fix_I_forecast.features import ALL_COLUMNS, TARGET, make_training_frame
 
 QUERY = text("""

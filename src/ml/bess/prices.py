@@ -1,6 +1,6 @@
 import pandas as pd
 
-from src.common.timeutils import ensure_utc_index, to_local_tz
+from energy_dash.core.timeutils import ensure_utc_index, to_local_tz
 
 # def _ensure_utc_index(df: pd.DataFrame) -> pd.DataFrame:
 #     data = df.copy()

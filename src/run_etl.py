@@ -5,7 +5,7 @@ from zoneinfo import ZoneInfo
 from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.triggers.cron import CronTrigger
 
-from src.common.database import Base, engine
+from energy_dash.core.db import Base, engine
 from src.etl.extract.news_rss import fetch_and_save_news
 from src.etl.extract.pse_api import (
     fetch_and_save_cen,
@@ -17,7 +17,7 @@ from src.etl.extract.tge_api import fetch_and_save_tge
 from src.etl.transform.news_digest import digest_exists, generate_digest, today_utc
 from src.models_db import energy, news, renewables, forecasts
 from src.ml.fix_I_forecast.evaluation import evaluate_forecasts
-from src.config.settings import get_settings
+from energy_dash.core.settings import get_settings
 
 settings = get_settings()
 WARSAW_TZ = settings.tz
