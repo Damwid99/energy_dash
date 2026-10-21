@@ -21,7 +21,7 @@ def _cached_min_max_date(index_name: str):
     return get_min_max_date(index_name=index_name)
 
 
-def render_prices():
+def render():
     render_page_header("Ceny energii")
     st.markdown("Monitor polskiego rynku energii. Ceny podane w `PLN/MWh`.")
 

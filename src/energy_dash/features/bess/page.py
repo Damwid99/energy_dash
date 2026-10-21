@@ -63,7 +63,7 @@ def _cached_strategies(
     }
 
 
-def render_bess():
+def render():
     render_page_header("Magazyn Energii")
 
     text = """

@@ -25,7 +25,7 @@ def _cached_assets_metadata():
     return get_assets_metadata()
 
 
-def render_assets():
+def render():
     render_page_header("Analiza asetów wytwórczych")
 
     text = """

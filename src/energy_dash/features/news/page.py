@@ -20,7 +20,7 @@ def _cached_dates_of_summaries():
     return get_dates_of_summaries()
 
 
-def render_news():
+def render():
     available_dates = _cached_dates_of_summaries()
 
     if not available_dates:
