@@ -20,13 +20,13 @@ TGE_WINDOW_DAYS = 60
 TGE_PUBLISH_HOUR = 14
 
 
-def latest_delivery_date(now: datetime = None) -> date:
+def latest_delivery_date(now: datetime | None = None) -> date:
     """Najnowsza doba dostawy, dla której są już dane Fixing II."""
     now = now or datetime.now(WARSAW)
     return now.date() + timedelta(days=1) if now.hour >= TGE_PUBLISH_HOUR else now.date()
 
 
-def earliest_delivery_date(now: datetime = None) -> date:
+def earliest_delivery_date(now: datetime | None = None) -> date:
     """Najstarsza doba dostawy dostępna na stronie TGE."""
     now = now or datetime.now(WARSAW)
     return now.date() - timedelta(days=TGE_WINDOW_DAYS - 1)
@@ -69,10 +69,10 @@ def parse_tge_day(html: bytes, delivery_date: date) -> list[dict]:
     if table is None:
         raise ValueError("brak tabeli #rdn na stronie TGE")
 
-    headers = [
-        " ".join(th.get_text().split())
-        for th in table.find("thead").find_all("tr")[1].find_all("th")
-    ]
+    thed = table.find("thead")
+    if thed is None:
+        raise ValueError("Nie znaleziono thead w tabeli")
+    headers = [" ".join(th.get_text().split()) for th in thed.find_all("tr")[1].find_all("th")]
     if (
         len(headers) != 17
         or headers[2] != "Kurs [PLN/MWh]"
@@ -83,7 +83,10 @@ def parse_tge_day(html: bytes, delivery_date: date) -> list[dict]:
         raise ValueError(f"zmienił się układ tabeli TGE: {headers}")
 
     rows = []
-    for tr in table.find("tbody").find_all("tr"):
+    tbody = table.find("tbody")
+    if tbody is None:
+        raise ValueError("Nie znaleziono tbody w tabeli")
+    for tr in tbody.find_all("tr"):
         cells = [" ".join(td.get_text().split()) for td in tr.find_all("td")]
         m = re.match(r"^(\d{4}-\d{2}-\d{2})_Q\d{2}:\d{2}", cells[0]) if cells else None
         if not m:
@@ -139,7 +142,7 @@ def save_tge_day(session, rows: list[dict]) -> int:
 
 
 def fetch_and_save_tge(
-    start_date: str = None, end_date: str = None, days_back: int = 3
+    start_date: str | None = None, end_date: str | None = None, days_back: int = 3
 ) -> list[date]:
     """
     Pobiera 15-minutowe ceny Fixing I / Fixing II z TGE (RDN) i zapisuje/aktualizuje je w bazie.

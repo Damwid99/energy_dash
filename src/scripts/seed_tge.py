@@ -42,7 +42,7 @@ def main():
 
     session = SessionLocal()
     try:
-        total, first, last, f1, f2 = session.query(
+        total, first, last, f1, f2 = session.query(  # type: ignore[var-annotated]
             func.count(EnergyPrice.datetime_utc),
             func.min(EnergyPrice.datetime_utc),
             func.max(EnergyPrice.datetime_utc),

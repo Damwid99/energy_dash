@@ -10,7 +10,7 @@ from src.app.components.charts import (
     plot_price_indices_contracting_status_15min,
     plot_price_indices_contracting_status_1h,
 )
-from src.common.timeutils import to_local_tz
+from src.config.settings import get_settings
 
 render_page_header("Informacje bieżące")
 
@@ -21,7 +21,7 @@ Analiza danych dostępna jest na [GitHubie](https://github.com/Damwid99/energy_f
 """
 render_page_caution("UWAGA", text)
 
-now = to_local_tz(datetime.now()).floor("D")
+now = pd.Timestamp.now(tz=get_settings().tz).floor("D")
 
 start_local = now - pd.Timedelta(days=1)
 end_local = now + pd.Timedelta(days=2)

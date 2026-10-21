@@ -45,12 +45,12 @@ def seed_news():
 
     session = SessionLocal()
     try:
-        total, first, last = session.query(
+        total, first, last = session.query(  # type: ignore[var-annotated]
             func.count(NewsArticle.id),
             func.min(NewsArticle.published_utc),
             func.max(NewsArticle.published_utc),
         ).one()
-        n_digests, last_digest = session.query(
+        n_digests, last_digest = session.query(  # type: ignore[var-annotated]
             func.count(NewsDigest.id), func.max(NewsDigest.generated_utc)
         ).one()
         print(f"\nW bazie: {total} artykułów, od {first} do {last} (UTC)")

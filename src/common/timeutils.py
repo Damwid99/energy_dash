@@ -35,20 +35,21 @@ def to_local_tz(dt_or_df: datetime | pd.DataFrame | pd.Series, tz: ZoneInfo | No
     """
     Konwertuje obiekt czasu lub indeks DataFrame/Series na strefę lokalną
     """
-
     target_tz = tz or get_settings().tz
 
-    if isinstance(dt_or_df, datetime):
-        return dt_or_df.astimezone(target_tz)
+    if isinstance(dt_or_df, (datetime, pd.Timestamp)):
+        ts = pd.Timestamp(dt_or_df)
+        if ts.tz is None:
+            ts = ts.tz_localize("UTC")
+        return ts.tz_convert(target_tz)
 
     if isinstance(dt_or_df, (pd.DataFrame, pd.Series)):
         data = dt_or_df.copy()
         if not isinstance(data.index, pd.DatetimeIndex):
-            data = ensure_utc_index(data)
-        elif data.index.tz is None:
+            data.index = pd.to_datetime(data.index)
+        if data.index.tz is None:
             data.index = data.index.tz_localize("UTC")
-
         data.index = data.index.tz_convert(target_tz)
         return data
 
-    raise TypeError(f"Nieobsługiwany typ wejściowy: {type(dt_or_df)}")
+    raise TypeError(f"Nieobsługiwany typ: {type(dt_or_df)}")

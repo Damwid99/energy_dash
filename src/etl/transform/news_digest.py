@@ -80,7 +80,7 @@ def generate_digest(force: bool = False):
     try:
         articles = (
             session.query(NewsArticle)
-            .filter(NewsArticle.published_utc >= since)
+            .filter(NewsArticle.published_utc >= since)  # type: ignore[arg-type]
             .order_by(NewsArticle.published_utc.desc())
             .limit(TITLES_LIMIT)
             .all()

@@ -8,7 +8,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class DataBaseSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="POSTGRES_", env_file=".env", extra="ignore")
     user: str = "energy_user"
-    password: SecretStr = None
+    password: SecretStr
     host: str = "localhost"
     port: int = 5458
     db: str = "energy_db"
@@ -53,7 +53,7 @@ class SchedulerSettings(BaseSettings):
 
 class Settings(BaseModel):
     tz: ZoneInfo = ZoneInfo("Europe/Warsaw")
-    db: DataBaseSettings = Field(default_factory=DataBaseSettings)
+    db: DataBaseSettings = DataBaseSettings()  # type: ignore
     mlflow: MlflowSettings = MlflowSettings()
     forecast: ForecastSettings = ForecastSettings()
     llm: LlmSettings = LlmSettings()

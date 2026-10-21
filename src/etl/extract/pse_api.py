@@ -1,6 +1,7 @@
 import time
 from collections import defaultdict
 from datetime import UTC, date, datetime, timedelta
+from typing import Any, cast
 
 import requests
 from requests.adapters import HTTPAdapter
@@ -10,7 +11,9 @@ from src.common.database import SessionLocal
 from src.models_db.energy import EnergyPrice, PseOzeActual, PseOzeForecast
 
 
-def fetch_and_save_rce(start_date: str = None, end_date: str = None, days_back: int = 3):
+def fetch_and_save_rce(
+    start_date: str | None = None, end_date: str | None = None, days_back: int = 3
+):
     """
     Pobiera dane RCE z API PSE i zapisuje/aktualizuje je w bazie.
     Działa iteracyjnie (dzień po dniu), aby ominąć limit 100 rekordów API PSE.
@@ -52,7 +55,7 @@ def fetch_and_save_rce(start_date: str = None, end_date: str = None, days_back: 
                     print(f"{d_str}: Brak danych RCE.")
                     continue
 
-                parsed_rows = []
+                parsed_rows: list[dict[str, Any]] = []
                 for row in data:
                     utc_str = row.get("dtime_utc")
                     rce_val = row.get("rce_pln")
@@ -71,7 +74,7 @@ def fetch_and_save_rce(start_date: str = None, end_date: str = None, days_back: 
                 day_from = parsed_rows[0]["datetime_utc"]
                 day_to = parsed_rows[-1]["datetime_utc"]
 
-                existing = {
+                existing: dict[Any, EnergyPrice] = {
                     r.datetime_utc: r
                     for r in session.query(EnergyPrice)
                     .filter(
@@ -106,7 +109,9 @@ def fetch_and_save_rce(start_date: str = None, end_date: str = None, days_back: 
     print(f"Zaktualizowano łącznie {total_saved} punktów RCE w bazie danych.")
 
 
-def fetch_and_save_cen(start_date: str = None, end_date: str = None, days_back: int = 5):
+def fetch_and_save_cen(
+    start_date: str | None = None, end_date: str | None = None, days_back: int = 5
+):
     """
     Pobiera ceny CEN oraz status kontraktowania/bilansowania KSE z API PSE
     (endpoint price-cost / price-fcst) i zapisuje/aktualizuje w bazie.
@@ -157,7 +162,7 @@ def fetch_and_save_cen(start_date: str = None, end_date: str = None, days_back: 
                     print(f"{d_str}: Brak danych CEN.")
                     continue
 
-                parsed_rows = []
+                parsed_rows: list[dict[str, Any]] = []
                 for row in data:
                     utc_str = row.get("dtime_utc")
 
@@ -188,7 +193,7 @@ def fetch_and_save_cen(start_date: str = None, end_date: str = None, days_back: 
                 day_from = parsed_rows[0]["datetime_utc"]
                 day_to = parsed_rows[-1]["datetime_utc"]
 
-                existing = {
+                existing: dict[Any, EnergyPrice] = {
                     r.datetime_utc: r
                     for r in session.query(EnergyPrice)
                     .filter(
@@ -232,7 +237,9 @@ def fetch_and_save_cen(start_date: str = None, end_date: str = None, days_back: 
     print(f"Zaktualizowano łącznie {total_saved} punktów CEN w bazie danych.")
 
 
-def fetch_and_save_oze_actuals(start_date: str = None, end_date: str = None, days_back: int = 5):
+def fetch_and_save_oze_actuals(
+    start_date: str | None = None, end_date: str | None = None, days_back: int = 5
+):
     """
     Pobiera rzeczywiste wykonanie zapotrzebowania, generacji OZE i wymiany z API PSE
     (endpoint his-wlk-cal) i zapisuje je w bazie.
@@ -271,7 +278,7 @@ def fetch_and_save_oze_actuals(start_date: str = None, end_date: str = None, day
                     print(f"{d_str}: Brak danych rzeczywistych OZE/KSE")
                     continue
 
-                parsed_rows = []
+                parsed_rows: list[dict[str, Any]] = []
                 for row in data:
                     dtime_utc_str = row.get("dtime_utc")
                     pv_actual = row.get("pv")
@@ -313,7 +320,7 @@ def fetch_and_save_oze_actuals(start_date: str = None, end_date: str = None, day
                 day_from = parsed_rows[0]["datetime_utc"]
                 day_to = parsed_rows[-1]["datetime_utc"]
 
-                existing = {
+                existing: dict[Any, PseOzeActual] = {
                     r.datetime_utc: r
                     for r in session.query(PseOzeActual)
                     .filter(
@@ -387,8 +394,8 @@ def _fetch_kse_demand_hourly(http: requests.Session, d_str: str) -> dict[datetim
 
 
 def fetch_and_save_oze(
-    start_date: str = None,
-    end_date: str = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
     days_back: int = 5,
     days_forward: int = 2,
     keep_past_fcst: bool = False,
@@ -437,7 +444,7 @@ def fetch_and_save_oze(
 
                 demand_by_hour = _fetch_kse_demand_hourly(http, d_str)
 
-                parsed_rows = []
+                parsed_rows: list[dict[str, Any]] = []
                 no_demand = 0
                 for row in data:
                     issued_utc_str = row.get("plan_dtime_utc")
@@ -487,19 +494,21 @@ def fetch_and_save_oze(
 
                 if not parsed_rows:
                     continue
+                day_from: datetime = min(
+                    cast(datetime, r["issue_datetime_utc"]) for r in parsed_rows
+                )
+                day_to: datetime = max(cast(datetime, r["issue_datetime_utc"]) for r in parsed_rows)
 
-                day_from = min(r["issue_datetime_utc"] for r in parsed_rows)
-                day_to = max(r["issue_datetime_utc"] for r in parsed_rows)
-
-                existing = {
+                existing: dict[Any, PseOzeForecast] = {
                     r.issue_datetime_utc: r
                     for r in session.query(PseOzeForecast)
                     .filter(
-                        PseOzeForecast.issue_datetime_utc >= day_from,
-                        PseOzeForecast.issue_datetime_utc <= day_to,
+                        cast(Any, PseOzeForecast.issue_datetime_utc >= day_from),
+                        cast(Any, PseOzeForecast.issue_datetime_utc <= day_to),
                     )
                     .all()
                 }
+
                 saved = 0
                 for row in parsed_rows:
                     dt = row["issue_datetime_utc"]

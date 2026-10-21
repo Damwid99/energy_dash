@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from typing import Any
 from urllib.parse import quote_plus
 
 import feedparser
@@ -26,13 +27,13 @@ def _feed_url(query: str, hl: str, gl: str, ceid: str, days_back: int) -> str:
 
 def fetch_and_save_news(days_back: int = 2):
     print(f"[NEWS] Pobieranie newsów z ostatnich {days_back} dób...")
-    rows = {}
+    rows: dict[str, Any] = {}
 
     for topic, query, hl, gl, ceid in FEEDS:
         try:
             feed = feedparser.parse(_feed_url(query, hl, gl, ceid, days_back))
-        except Exception as e:
-            print(f"[NEWS] BŁĄD feedu '{query}': {e}")
+        except Exception as exept:
+            print(f"[NEWS] BŁĄD feedu '{query}': {exept}")
             continue
 
         for e in feed.entries:
@@ -51,7 +52,7 @@ def fetch_and_save_news(days_back: int = 2):
                     "title": title.strip(),
                     "source": source,
                     "topic": topic,
-                    "published_utc": datetime(*e.published_parsed[:6], tzinfo=UTC),
+                    "published_utc": datetime(*e.published_parsed[:6], tzinfo=UTC),  # type: ignore[misc]
                 },
             )
 
@@ -61,7 +62,7 @@ def fetch_and_save_news(days_back: int = 2):
 
     session = SessionLocal()
     try:
-        stmt = (
+        stmt: Any = (
             insert(NewsArticle)
             .values(list(rows.values()))
             .on_conflict_do_nothing(index_elements=["url"])

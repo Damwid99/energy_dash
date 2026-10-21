@@ -8,7 +8,7 @@ from src.ml.bess.strategies import run_day_strategies, BessStrategy
 from src.ml.bess.battery import BatteryParams
 from src.app.components.charts import plot_strategy_schedule
 from src.ml.fix_I_forecast.predictor import load_champion_model, init_mlflow
-from src.common.timeutils import to_local_tz
+from src.config.settings import get_settings
 
 render_page_header("Magazyn Energii")
 
@@ -19,7 +19,7 @@ Analiza danych dostępna jest na [GitHubie](https://github.com/Damwid99/energy_f
 """
 render_page_caution("UWAGA", text)
 
-now = to_local_tz(datetime.now()).floor("D")
+now = pd.Timestamp.now(tz=get_settings().tz).floor("D")
 
 start_local = now - pd.Timedelta(days=2)
 end_local = now + pd.Timedelta(days=2)
