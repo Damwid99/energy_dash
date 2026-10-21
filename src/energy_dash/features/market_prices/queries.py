@@ -1,5 +1,4 @@
 import pandas as pd
-import streamlit as st
 from sqlalchemy import text
 
 from energy_dash.core.db import engine
@@ -16,7 +15,6 @@ DEFAULT_ENERGY_COLUMNS = [
 ]
 
 
-@st.cache_data(ttl="5m")
 def get_energy_prices(
     start_dt_utc: pd.Timestamp,
     end_dt_utc: pd.Timestamp,
@@ -56,7 +54,6 @@ def get_energy_prices(
     return df
 
 
-@st.cache_data(ttl=900)
 def get_kse_contracting_status(
     start_dt_utc: pd.Timestamp, end_dt_utc: pd.Timestamp
 ) -> pd.DataFrame:
@@ -91,7 +88,6 @@ def get_kse_contracting_status(
     return df
 
 
-@st.cache_data(ttl=900)
 def get_min_max_date(index_name: str) -> tuple[pd.Timestamp | None, pd.Timestamp | None]:
     """
     Pobiera minimalną i maksymalną datę dla wskazanego indeksu cenowego z tabeli energy_prices.

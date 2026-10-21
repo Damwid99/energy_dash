@@ -1,12 +1,10 @@
 import pandas as pd
-import streamlit as st
 from sqlalchemy import text
 from sqlalchemy.sql.elements import TextClause
 
 from energy_dash.core.db import engine
 
 
-@st.cache_data(ttl="5m")
 def get_energy_prices_and_forecasts(
     start_dt_utc: pd.Timestamp, end_dt_utc: pd.Timestamp
 ) -> pd.DataFrame:

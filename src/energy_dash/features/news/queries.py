@@ -1,13 +1,11 @@
 from datetime import UTC, date, datetime, time, timedelta
 
 import pandas as pd
-import streamlit as st
 
 from energy_dash.core.db import SessionLocal
 from energy_dash.features.news.models import NewsArticle, NewsDigest
 
 
-@st.cache_data(ttl=300)
 def get_news_articles(issued_day: date) -> pd.DataFrame:
     end = datetime.combine(issued_day, time(7, 0, tzinfo=UTC))
     start = end - timedelta(days=1)
@@ -34,7 +32,6 @@ def get_news_articles(issued_day: date) -> pd.DataFrame:
     return pd.DataFrame(records)
 
 
-@st.cache_data(ttl=300)
 def get_news_digest(issued_day: date) -> dict | None:
     with SessionLocal() as session:
         d = (
@@ -53,7 +50,6 @@ def get_news_digest(issued_day: date) -> dict | None:
         }
 
 
-@st.cache_data(ttl=300)
 def get_dates_of_summaries() -> list[date]:
     with SessionLocal() as session:
         rows = session.query(NewsDigest.issued_day_utc).order_by(NewsDigest.issued_day_utc).all()  # type: ignore[var-annotated]

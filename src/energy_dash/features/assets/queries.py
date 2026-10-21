@@ -1,5 +1,4 @@
 import pandas as pd
-import streamlit as st
 from sqlalchemy import text
 
 from energy_dash.core.db import engine
@@ -8,7 +7,6 @@ from energy_dash.core.settings import get_settings
 LOCAL_TZ = get_settings().tz
 
 
-@st.cache_data(ttl=900)
 def get_assets_metadata() -> pd.DataFrame:
     """
     Zwraca dataframe ze wszystkimi metdanymi farm wiatrowych i słonecznych
@@ -23,7 +21,6 @@ def get_assets_metadata() -> pd.DataFrame:
     return df
 
 
-@st.cache_data(ttl=900)
 def get_assets_capacity_factors() -> pd.DataFrame:
     """
     Zwraca dataframe z capcity factors farm
@@ -48,7 +45,6 @@ def get_assets_capacity_factors() -> pd.DataFrame:
     return df
 
 
-@st.cache_data(ttl=900)
 def get_asset_geneartion_and_prices(asset_id: int, dropna: bool = True) -> pd.DataFrame:
     """
     Zwraca dataframe z generacją farm, prognozami generacji oraz indeksami cenowymi

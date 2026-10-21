@@ -1,11 +1,9 @@
 import pandas as pd
-import streamlit as st
 from sqlalchemy import text
 
 from energy_dash.core.db import engine
 
 
-@st.cache_data(ttl="5m")
 def get_data_for_bess(
     start_dt_utc: str,
     end_dt_utc: str,
