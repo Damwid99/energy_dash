@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from src.ml.fix_I_forecast.features import (
+from energy_dash.features.forecasting.features import (
     ALL_COLUMNS,
     DEMAND,
     EXCHANGE,

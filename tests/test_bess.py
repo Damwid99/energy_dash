@@ -6,10 +6,15 @@ import pandas as pd
 import pytest
 from pydantic import ValidationError
 
-from src.ml.bess.battery import BatteryParams, _clean_val, optimize_day, validate_schedule
-from src.ml.bess.prices import prepare_price_data
-from src.ml.bess.settlement import settle_schedule
-from src.ml.bess.strategies import (
+from energy_dash.features.bess.battery import (
+    BatteryParams,
+    _clean_val,
+    optimize_day,
+    validate_schedule,
+)
+from energy_dash.features.bess.prices import prepare_price_data
+from energy_dash.features.bess.settlement import settle_schedule
+from energy_dash.features.bess.strategies import (
     BessStrategy,
     DayResult,
     naive_schedule,
