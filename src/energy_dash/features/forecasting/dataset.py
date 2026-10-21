@@ -2,7 +2,7 @@ import pandas as pd
 
 from energy_dash.core.settings import get_settings
 from energy_dash.core.timeutils import to_local_tz
-from src.ml.fix_I_forecast.features import ALL_COLUMNS, TARGET, make_training_frame
+from energy_dash.features.forecasting.features import ALL_COLUMNS, TARGET, make_training_frame
 
 
 def get_start_end_date(window_size: int = 365, today: pd.Timestamp | None = None):
