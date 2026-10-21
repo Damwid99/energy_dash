@@ -1,16 +1,15 @@
 import json
-import os
 import re
-from typing import TypeVar
 
 import litellm
 from pydantic import BaseModel, ValidationError
 
-T = TypeVar("T", bound=BaseModel)
+from src.config.settings import get_settings
 
-API_BASE = os.getenv("OLLAMA_API_BASE", "http://localhost:11434")
-MODEL = os.getenv("LLM_MODEL", "ollama_chat/gpt-oss:20b-cloud")
-USE_RESPONSE_FORMAT = os.getenv("LLM_USE_RESPONSE_FORMAT", "1") == "1"
+settings = get_settings()
+API_BASE = settings.llm.api_base
+MODEL = settings.llm.model
+USE_RESPONSE_FORMAT = settings.llm.use_response_format
 
 
 def _extract_json(text: str) -> str:
@@ -19,7 +18,9 @@ def _extract_json(text: str) -> str:
     return m.group(0) if m else text
 
 
-def ask_structured(system: str, user: str, schema: type[T], max_retries: int = 1) -> T:
+def ask_structured[T: BaseModel](
+    system: str, user: str, schema: type[T], max_retries: int = 1
+) -> T:
     schema_hint = json.dumps(schema.model_json_schema(), ensure_ascii=False)
     messages = [
         {

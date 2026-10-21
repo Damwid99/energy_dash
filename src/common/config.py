@@ -1,16 +1,9 @@
-import os
-from pathlib import Path
+from src.config.settings import get_settings
 
-from dotenv import load_dotenv
+settings = get_settings()
 
-BASE_DIR = Path(__file__).resolve().parents[2]
-load_dotenv(dotenv_path=BASE_DIR / ".env")
-
-DB_USER = os.getenv("POSTGRES_USER", "energy_user")
-DB_PASSWORD = os.getenv("POSTGRES_PASSWORD", "super_secret_password_123")
-
-DB_HOST = os.getenv("POSTGRES_HOST", "localhost")
-DB_PORT = os.getenv("POSTGRES_PORT", "5458")
-DB_NAME = os.getenv("POSTGRES_DB", "energy_db")
-
-DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+DATABASE_URL = settings.db.url
+DB_USER = settings.db.user
+DB_HOST = settings.db.host
+DB_PORT = settings.db.port
+DB_NAME = settings.db.db

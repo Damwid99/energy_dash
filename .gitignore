@@ -20,4 +20,7 @@ developer_cycle.md
 
 docker-compose.override.yml
 
-**llm_check.py
+.ruff_cache/
+.mypy_cache/
+
+REFACTOR_PLAN.md

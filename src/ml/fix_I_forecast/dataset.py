@@ -4,8 +4,10 @@ import pandas as pd
 from sqlalchemy import text
 from sqlalchemy.sql.elements import TextClause
 
-from ml.fix_I_forecast.features import ALL_COLUMNS, TARGET, make_training_frame
+from src.common.config import get_settings
 from src.common.database import engine
+from src.common.timeutils import to_local_tz
+from src.ml.fix_I_forecast.features import ALL_COLUMNS, TARGET, make_training_frame
 
 QUERY = text("""
     SELECT *
@@ -19,8 +21,8 @@ WARSAW_TZ = ZoneInfo("Europe/Warsaw")
 
 def get_start_end_date(window_size: int = 365, today: pd.Timestamp | None = None):
     if today is None:
-        today = pd.Timestamp.now(tz=WARSAW_TZ)
-    today = today.tz_convert(WARSAW_TZ).normalize()
+        today = pd.Timestamp.now(tz=get_settings().tz)
+    today = to_local_tz(today).normalize()
 
     start_train_date = (today - pd.DateOffset(days=window_size)).tz_convert("UTC")
     start_predict_date = (today + pd.DateOffset(days=1)).tz_convert("UTC")

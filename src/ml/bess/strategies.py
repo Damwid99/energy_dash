@@ -1,5 +1,6 @@
 import datetime
 from dataclasses import dataclass
+from enum import StrEnum
 from typing import Literal
 
 import numpy as np
@@ -8,9 +9,11 @@ import pandas as pd
 from src.ml.bess.battery import BatteryParams, optimize_day, validate_schedule
 from src.ml.bess.settlement import settle_schedule
 
-PERFECT_FORESIGHT = "perfect_foresight"
-FORECAST_BASED = "forecast_based"
-NAIVE = "naive"
+
+class BessStrategy(StrEnum):
+    PERFECT_FORESIGHT = "perfect_foresight"
+    FORECAST_BASED = "forecast_based"
+    NAIVE = "naive"
 
 
 def perfect_foresight_schedule(
@@ -159,9 +162,9 @@ def run_day_strategies(
         sched_fcst = forecast_schedule(
             day_df, params, forbid_simultaneous=forbid_simultaneous, price_col="price_forecast"
         )
-        schedules[FORECAST_BASED] = sched_fcst
+        schedules[BessStrategy.FORECAST_BASED] = sched_fcst
     except RuntimeError as err:
-        notes.append(f"Strategia '{FORECAST_BASED}' zgłosiła błąd solvera: {err}")
+        notes.append(f"Strategia '{BessStrategy.FORECAST_BASED}' zgłosiła błąd solvera: {err}")
 
     # Perfect foresight
     if has_real:
@@ -169,9 +172,11 @@ def run_day_strategies(
             sched_pf = perfect_foresight_schedule(
                 day_df, params, forbid_simultaneous=forbid_simultaneous, price_col="price_real"
             )
-            schedules[PERFECT_FORESIGHT] = sched_pf
+            schedules[BessStrategy.PERFECT_FORESIGHT] = sched_pf
         except RuntimeError as err:
-            notes.append(f"Strategia '{PERFECT_FORESIGHT}' zgłosiła błąd solvera: {err}")
+            notes.append(
+                f"Strategia '{BessStrategy.PERFECT_FORESIGHT}' zgłosiła błąd solvera: {err}"
+            )
 
     # strategia Naive
 
@@ -187,12 +192,12 @@ def run_day_strategies(
         if has_prev_real and is_regular_hours:
             try:
                 sched_naive = naive_strategy(day_df, prev_df, params, price_col="price_real")
-                schedules[NAIVE] = sched_naive
+                schedules[BessStrategy.NAIVE] = sched_naive
             except RuntimeError as err:
-                notes.append(f"Strategia '{NAIVE}' zgłosiła błąd solvera: {err}")
+                notes.append(f"Strategia '{BessStrategy.NAIVE}' zgłosiła błąd solvera: {err}")
         else:
             notes.append(
-                f"Pominięto '{NAIVE}': wymaga dokładnie 24h w dobie bieżącej i poprzedniej oraz cen rzeczywistych."
+                f"Pominięto '{BessStrategy.NAIVE}': wymaga dokładnie 24h w dobie bieżącej i poprzedniej oraz cen rzeczywistych."
             )
 
     for strat_name, sched in schedules.items():
@@ -231,8 +236,8 @@ def run_day_strategies(
     if summary_df.empty:
         summary_df = pd.DataFrame(columns=["revenue_pln", "n_cycles", "capture_rate"])
 
-    if PERFECT_FORESIGHT in summary_df.index:
-        pf_revenue = summary_df.loc[PERFECT_FORESIGHT, "revenue_pln"]
+    if BessStrategy.PERFECT_FORESIGHT in summary_df.index:
+        pf_revenue = summary_df.loc[BessStrategy.PERFECT_FORESIGHT, "revenue_pln"]
         if pf_revenue > 0:
             summary_df["capture_rate"] = summary_df["revenue_pln"] / pf_revenue
 

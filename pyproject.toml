@@ -21,13 +21,13 @@ dependencies = [
     "lxml>=6.1.3",
     "mlflow>=3.17.0",
     "mlflow-skinny==3.17.0",
-    "mypy>=2.4.0",
     "pandas>=3.0.6",
     "plotly>=7.1.0",
     "psycopg2-binary>=2.9.13",
     "psycopg[binary]>=3.3.6",
     "pulp>=4.0.1",
     "pydantic>=2.13.5",
+    "pydantic-settings>=2.15.0",
     "python-dotenv>=1.2.3",
     "pytz>=2026.4",
     "requests>=2.34.2",
@@ -41,6 +41,26 @@ dependencies = [
 [project.scripts]
 energy-dash = "energy_dash:main"
 
+[dependency-groups]
+dev = [
+    "mypy>=2.4.0",
+    "pytest>=8.0.0",
+    "ruff>=0.9.0",
+]
+
 [build-system]
 requires = ["uv_build>=0.12.12,<0.13.0"]
 build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[tool.mypy]
+python_version = "3.14"
+exclude = [
+    "^notebooks/",
+    "^data/",
+]
+ignore_missing_imports = true
+check_untyped_defs = true

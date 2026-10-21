@@ -39,7 +39,7 @@ def seed_rce():
 
     session = SessionLocal()
     try:
-        total, first, last, rce_count = session.query(
+        total, first, last, rce_count = session.query(  # type: ignore[var-annotated]
             func.count(EnergyPrice.datetime_utc),
             func.min(EnergyPrice.datetime_utc),
             func.max(EnergyPrice.datetime_utc),
@@ -68,7 +68,7 @@ def seed_cen():
 
     session = SessionLocal()
     try:
-        total, first, last, cen_count = session.query(
+        total, first, last, cen_count = session.query(  # type: ignore[var-annotated]
             func.count(EnergyPrice.datetime_utc),
             func.min(EnergyPrice.datetime_utc),
             func.max(EnergyPrice.datetime_utc),
@@ -95,7 +95,7 @@ def seed_oze():
 
     session = SessionLocal()
     try:
-        total, first, last, pv_count, wind_count = session.query(
+        total, first, last, pv_count, wind_count = session.query(  # type: ignore[var-annotated]
             func.count(PseOzeForecast.issue_datetime_utc),
             func.min(PseOzeForecast.issue_datetime_utc),
             func.max(PseOzeForecast.issue_datetime_utc),
@@ -125,7 +125,7 @@ def seed_oze_actuals():
 
     session = SessionLocal()
     try:
-        total, first, last, pv_count, wind_count = session.query(
+        total, first, last, pv_count, wind_count = session.query(  # type: ignore[var-annotated]
             func.count(PseOzeActual.datetime_utc),
             func.min(PseOzeActual.datetime_utc),
             func.max(PseOzeActual.datetime_utc),

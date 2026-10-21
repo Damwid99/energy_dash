@@ -5,6 +5,7 @@ import streamlit as st
 from sqlalchemy import text
 
 from src.common.database import SessionLocal, engine
+from src.config.settings import get_settings
 from src.models_db.news import NewsArticle, NewsDigest
 
 DEFAULT_ENERGY_COLUMNS = [
@@ -13,6 +14,8 @@ DEFAULT_ENERGY_COLUMNS = [
     "fixing_2_pln_mwh",
     "cen_pln_mwh",
 ]
+
+LOCAL_TZ = get_settings().tz
 
 
 @st.cache_data(ttl=900)
@@ -37,8 +40,8 @@ def get_min_max_date(index_name: str) -> tuple[pd.Timestamp | None, pd.Timestamp
     if pd.isna(min_date_raw) or pd.isna(max_date_raw):
         return None, None
 
-    min_date_local = pd.to_datetime(min_date_raw).tz_convert("Europe/Warsaw")
-    max_date_local = pd.to_datetime(max_date_raw).tz_convert("Europe/Warsaw")
+    min_date_local = pd.to_datetime(min_date_raw, utc=True).tz_convert(LOCAL_TZ)
+    max_date_local = pd.to_datetime(max_date_raw, utc=True).tz_convert(LOCAL_TZ)
 
     return min_date_local, max_date_local
 
@@ -76,7 +79,7 @@ def get_energy_prices(
     else:
         df["datetime_utc"] = df["datetime_utc"].dt.tz_convert("UTC")
 
-    df["datetime_local"] = df["datetime_utc"].dt.tz_convert("Europe/Warsaw")
+    df["datetime_local"] = df["datetime_utc"].dt.tz_convert(LOCAL_TZ)
     df.set_index("datetime_local", inplace=True)
     df.drop(columns=["datetime_utc"], inplace=True)
 
@@ -111,7 +114,7 @@ def get_kse_contracting_status(
     else:
         df["datetime_utc"] = df["datetime_utc"].dt.tz_convert("UTC")
 
-    df["datetime_local"] = df["datetime_utc"].dt.tz_convert("Europe/Warsaw")
+    df["datetime_local"] = df["datetime_utc"].dt.tz_convert(LOCAL_TZ)
     df.set_index("datetime_local", inplace=True)
     df.drop(columns=["datetime_utc"], inplace=True)
 
@@ -200,7 +203,7 @@ def get_asset_geneartion_and_prices(asset_id: int, dropna: bool = True) -> pd.Da
     else:
         df["datetime_utc"] = df["datetime_utc"].dt.tz_convert("UTC")
 
-    df["datetime_local"] = df["datetime_utc"].dt.tz_convert("Europe/Warsaw")
+    df["datetime_local"] = df["datetime_utc"].dt.tz_convert(LOCAL_TZ)
     df.set_index("datetime_local", inplace=True)
     df.drop(columns=["datetime_utc"], inplace=True)
 
@@ -217,8 +220,8 @@ def get_news_articles(issued_day: date) -> pd.DataFrame:
     with SessionLocal() as session:
         rows = (
             session.query(NewsArticle)
-            .filter(NewsArticle.published_utc >= start)
-            .filter(NewsArticle.published_utc < end)
+            .filter(NewsArticle.published_utc >= start)  # type: ignore[arg-type]
+            .filter(NewsArticle.published_utc < end)  # type: ignore[arg-type]
             .order_by(NewsArticle.published_utc.desc())
             .all()
         )
@@ -258,7 +261,7 @@ def get_news_digest(issued_day: date) -> dict | None:
 @st.cache_data(ttl=300)
 def get_dates_of_summaries() -> list[date]:
     with SessionLocal() as session:
-        rows = session.query(NewsDigest.issued_day_utc).order_by(NewsDigest.issued_day_utc).all()
+        rows = session.query(NewsDigest.issued_day_utc).order_by(NewsDigest.issued_day_utc).all()  # type: ignore[var-annotated]
     return [r[0] for r in rows]
 
 

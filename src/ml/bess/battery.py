@@ -86,9 +86,7 @@ def optimize_day(
     soc = {t: problem.add_variable(f"soc_{t}", 0, params.capacity_mwh) for t in range(n)}
 
     if forbid_simultaneous:
-        is_charging = {
-            t: problem.add_variable(f"is_charging_{t}", cat=pulp.LpBinary) for t in range(n)
-        }
+        is_charging = {t: problem.add_variable(f"is_charging_{t}", cat="Binary") for t in range(n)}
 
         for t in range(n):
             problem += charge[t] <= params.power_mw * is_charging[t]

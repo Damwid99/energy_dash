@@ -1,12 +1,14 @@
 import streamlit as st
 import pandas as pd
-
+from datetime import datetime
 from src.app.layout import render_page_header, render_page_caution
 from src.app.data_provider import get_data_for_bess
 from src.ml.bess.prices import prepare_price_data
-from src.ml.bess.strategies import run_day_strategies, FORECAST_BASED, PERFECT_FORESIGHT, NAIVE
+from src.ml.bess.strategies import run_day_strategies, BessStrategy
 from src.ml.bess.battery import BatteryParams
 from src.app.components.charts import plot_strategy_schedule
+from src.ml.fix_I_forecast.predictor import load_champion_model, init_mlflow
+from src.config.settings import get_settings
 
 render_page_header("Magazyn Energii")
 
@@ -17,7 +19,7 @@ Analiza danych dostępna jest na [GitHubie](https://github.com/Damwid99/energy_f
 """
 render_page_caution("UWAGA", text)
 
-now = pd.Timestamp.now(tz="Europe/Warsaw").floor("D")
+now = pd.Timestamp.now(tz=get_settings().tz).floor("D")
 
 start_local = now - pd.Timedelta(days=2)
 end_local = now + pd.Timedelta(days=2)
@@ -31,19 +33,30 @@ string_yesterday = str((now - pd.Timedelta(days=1)).date())
 string_tommorow = str((now + pd.Timedelta(days=1)).date())
 
 strategies_info = {
-    FORECAST_BASED: (
+    BessStrategy.FORECAST_BASED: (
         "Optymalizacja prognostyczna",
         "Harmonogram wyznaczany na podstawie prognozy cen. Odzwierciedla realne działanie magazynu decydującego przed sesją rynku.",
     ),
-    PERFECT_FORESIGHT: (
+    BessStrategy.PERFECT_FORESIGHT: (
         "Idealna wiedza",
         "Teoretyczny górny limit zysku wyznaczony na rzeczywistych cenach. Służy jako benchmark do oceny jakości prognozy.",
     ),
-    NAIVE: (
+    BessStrategy.NAIVE: (
         "Strategia naiwna (wczorajsze ceny)",
         "Heurystyka planująca ładowanie i rozładowanie w stałych godzinach wyznaczonych na bazie cen z poprzedniej doby, bez użycia modelu optymalizującego. Nie uwzględnia wymaganego minimalnego stanu naładowania na koniec doby.",
     ),
 }
+
+
+@st.cache_data(ttl="6h")
+def get_cached_champion_version() -> str:
+    """Zwraca wersję modelu champion z MLflow, odświeżaną co 10 minut."""
+    try:
+        init_mlflow()
+        mv = load_champion_model()
+        return str(mv.version)
+    except Exception as e:
+        return "3"
 
 
 @st.cache_data(max_entries=10, ttl="5m")
@@ -53,9 +66,10 @@ def get_cached_strategies(
     days_iso: list[str],
     power_mw: float,
     capacity_mwh: float,
-    soc_init_pct: int,
-    soc_end_min_pct: int,
-    eta_roundtrip_pct: int,
+    soc_init_pct: float,
+    soc_end_min_pct: float,
+    eta_roundtrip_pct: float,
+    model_version: str,
 ):
     params = BatteryParams.from_roundtrip(
         power_mw=power_mw,
@@ -68,7 +82,7 @@ def get_cached_strategies(
     df = get_data_for_bess(
         start_dt_utc=pd.Timestamp(start_iso),
         end_dt_utc=pd.Timestamp(end_iso),
-        model_version="3",
+        model_version=model_version,
     )
 
     df_prepared = prepare_price_data(df[["fixing_1_pln_mwh"]], df[["forecast_pln_mwh"]])
@@ -79,6 +93,7 @@ def get_cached_strategies(
     }
 
 
+champion_version = get_cached_champion_version()
 with st.sidebar:
     with st.form("battery_params_form"):
         st.subheader("Parametry magazynu")
@@ -119,7 +134,7 @@ with st.sidebar:
             )
 
             eta_roundtrip_pct = st.slider(
-                label="Sprawność round-trip [%]",
+                label="Sprawność cyklu [%]",
                 min_value=0.7,
                 max_value=0.95,
                 step=0.01,
@@ -162,6 +177,7 @@ strategies = get_cached_strategies(
     soc_init_pct=soc_init_pct,
     soc_end_min_pct=soc_end_min_pct,
     eta_roundtrip_pct=eta_roundtrip_pct,
+    model_version=champion_version,
 )
 
 
