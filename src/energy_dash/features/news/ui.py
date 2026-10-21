@@ -4,10 +4,6 @@ ICON = {"up": "📈", "down": "📉", "neutral": "➖", "unclear": "❓"}
 COMMODITY = {"power": "energia", "gas": "gaz", "oil": "ropa", "co2": "CO2", "general": "ogólne"}
 
 
-def calculate_farm_profile():
-    pass
-
-
 def render_items(items: list[dict], horizon: str):
     selected = [n for n in items if n.get("horizon") == horizon]
     if not selected:

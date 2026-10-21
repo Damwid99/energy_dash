@@ -1,6 +1,6 @@
 import streamlit as st
 
-from src.app.layout import render_page_header
+from energy_dash.app.layout import render_page_header
 
 render_page_header("O projekcie")
 
