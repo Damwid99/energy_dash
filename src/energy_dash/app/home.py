@@ -1,15 +1,15 @@
 import numpy as np
 import pandas as pd
 import streamlit as st
+
+from energy_dash.app.layout import render_page_caution, render_page_header
 from energy_dash.core.settings import get_settings
+from energy_dash.features.forecasting.queries import (
+    get_energy_prices_and_forecasts,
+)
 from energy_dash.features.market_prices.charts import (
     plot_price_indices_contracting_status_1h,
     plot_price_indices_contracting_status_15min,
-)
-
-from energy_dash.app.layout import render_page_caution, render_page_header
-from energy_dash.features.forecasting.queries import (
-    get_energy_prices_and_forecasts,
 )
 
 

@@ -3,11 +3,11 @@ from datetime import UTC, date, datetime, timedelta
 import trafilatura
 from googlenewsdecoder import gnewsdecoder
 
-from src.common.database import SessionLocal
-from src.common.llm import MODEL, ask_structured
-from src.config.settings import get_settings
-from src.models_db.news import NewsArticle, NewsDigest
-from src.schemas.news import Digest, Selection
+from energy_dash.core.db import SessionLocal
+from energy_dash.core.llm import MODEL, ask_structured
+from energy_dash.core.settings import get_settings
+from energy_dash.features.news.models import NewsArticle, NewsDigest
+from energy_dash.features.news.schemas import Digest, Selection
 
 settings = get_settings()
 

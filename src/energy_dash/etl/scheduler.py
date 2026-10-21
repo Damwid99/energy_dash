@@ -1,23 +1,21 @@
 import threading
 from datetime import datetime
-from zoneinfo import ZoneInfo
 
 from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.triggers.cron import CronTrigger
 
+import energy_dash.db_models  # noqa: F401  (rejestracja modeli w Base.metadata)
 from energy_dash.core.db import Base, engine
-from src.etl.extract.news_rss import fetch_and_save_news
-from src.etl.extract.pse_api import (
-    fetch_and_save_cen,
-    fetch_and_save_rce,
+from energy_dash.core.settings import get_settings
+from energy_dash.features.forecasting.evaluation import evaluate_forecasts
+from energy_dash.features.market_prices.etl_pse import fetch_and_save_cen, fetch_and_save_rce
+from energy_dash.features.market_prices.etl_tge import fetch_and_save_tge
+from energy_dash.features.news.digest import digest_exists, generate_digest, today_utc
+from energy_dash.features.news.etl_rss import fetch_and_save_news
+from energy_dash.features.power_system.etl import (
     fetch_and_save_oze,
     fetch_and_save_oze_actuals,
 )
-from src.etl.extract.tge_api import fetch_and_save_tge
-from src.etl.transform.news_digest import digest_exists, generate_digest, today_utc
-from src.models_db import energy, news, renewables, forecasts
-from src.ml.fix_I_forecast.evaluation import evaluate_forecasts
-from energy_dash.core.settings import get_settings
 
 settings = get_settings()
 WARSAW_TZ = settings.tz
@@ -26,8 +24,14 @@ NEWS_HOUR = settings.scheduler.news_hour
 _news_lock = threading.Lock()
 
 
+def init_db():
+    print("[ETL] Inicjalizacja bazy: sprawdzanie i tworzenie tabel...")
+    Base.metadata.create_all(bind=engine)
+    print("[ETL] Tabele są gotowe.")
+
+
 def task_daily_forecast():
-    from src.ml.fix_I_forecast.predictor import run_daily_forecast
+    from energy_dash.features.forecasting.predictor import run_daily_forecast
 
     print("[ETL] Uruchamianie prognozy cen Fixing I...")
     try:
@@ -42,12 +46,6 @@ def task_evaluate_forecasts(days_back: int):
         print(f"[ETL] Zewaluowano {n} runów prognoz.")
     except Exception as e:
         print(f"[ETL] Ewaluacja prognoz nie powiodła się: {e}")
-
-
-def init_db():
-    print("[ETL] Inicjalizacja bazy: sprawdzanie i tworzenie tabel...")
-    Base.metadata.create_all(bind=engine)
-    print("[ETL] Tabele są gotowe.")
 
 
 def task_cen():
@@ -91,14 +89,7 @@ def task_news_daily():
         _news_lock.release()
 
 
-if __name__ == "__main__":
-    print("[ETL] Start workera...")
-    init_db()
-
-    task_cen()
-    task_daily_market_data()
-    fetch_and_save_oze(days_back=3, days_forward=1)
-
+def build_scheduler() -> BlockingScheduler:
     scheduler = BlockingScheduler(timezone=WARSAW_TZ)
 
     scheduler.add_job(
@@ -152,6 +143,18 @@ if __name__ == "__main__":
             misfire_grace_time=600,
         )
 
+    return scheduler
+
+
+def main():
+    print("[ETL] Start workera...")
+    init_db()
+
+    task_cen()
+    task_daily_market_data()
+    fetch_and_save_oze(days_back=3, days_forward=1)
+
+    scheduler = build_scheduler()
     try:
         scheduler.start()
     except (KeyboardInterrupt, SystemExit):

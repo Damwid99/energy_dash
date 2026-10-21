@@ -8,8 +8,8 @@ from zoneinfo import ZoneInfo
 import requests
 from bs4 import BeautifulSoup
 
-from src.common.database import SessionLocal
-from src.models_db.energy import EnergyPrice
+from energy_dash.core.db import SessionLocal
+from energy_dash.features.market_prices.models import EnergyPrice
 
 TGE_URL = "https://tge.pl/energia-elektryczna-rdn"
 WARSAW = ZoneInfo("Europe/Warsaw")
