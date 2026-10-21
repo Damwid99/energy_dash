@@ -185,7 +185,7 @@ def test_prepare_price_data():
 
     merged = prepare_price_data(real_df, fcst_df)
 
-    assert "price_real" in merged.columns
+    assert "price_real" in merged.columns  # ignore
     assert "price_forecast" in merged.columns
     assert str(merged.index.tz) == "Europe/Warsaw"
     assert len(merged) == 4

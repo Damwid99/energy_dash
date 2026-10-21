@@ -41,24 +41,26 @@ class LlmSettings(BaseSettings):
 
 
 class NewsSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
     titles_limit: int = Field(default=100, validation_alias="NEWS_TITLES_LIMIT")
     select_max: int = Field(default=15, validation_alias="NEWS_SELECT_MAX")
     body_max_chars: int = Field(default=4000, validation_alias="NEWS_BODY_MAX_CHARS")
 
 
 class SchedulerSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
     news_hour: int = 7
     tge_publish_hour: int = 14
 
 
 class Settings(BaseModel):
     tz: ZoneInfo = ZoneInfo("Europe/Warsaw")
-    db: DataBaseSettings = DataBaseSettings()  # type: ignore
-    mlflow: MlflowSettings = MlflowSettings()
-    forecast: ForecastSettings = ForecastSettings()
-    llm: LlmSettings = LlmSettings()
-    news: NewsSettings = NewsSettings()
-    scheduler: SchedulerSettings = SchedulerSettings()
+    db: DataBaseSettings = Field(default_factory=DataBaseSettings)  # type: ignore
+    mlflow: MlflowSettings = Field(default_factory=MlflowSettings)
+    forecast: ForecastSettings = Field(default_factory=ForecastSettings)
+    llm: LlmSettings = Field(default_factory=LlmSettings)
+    news: NewsSettings = Field(default_factory=NewsSettings)
+    scheduler: SchedulerSettings = Field(default_factory=SchedulerSettings)
 
 
 @lru_cache(maxsize=1)

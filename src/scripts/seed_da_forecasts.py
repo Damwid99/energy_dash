@@ -88,6 +88,6 @@ def backfill_forecasts(first_day: date, last_day: date, dry_run: bool = False) -
 if __name__ == "__main__":
     today = pd.Timestamp.now(tz=WARSAW_TZ).date()
     backfill_forecasts(today - timedelta(days=30), today)
-    from ml.fix_I_forecast.evaluation import evaluate_forecasts
+    from src.ml.fix_I_forecast.evaluation import evaluate_forecasts
 
     evaluate_forecasts(days_back=45)

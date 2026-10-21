@@ -27,7 +27,7 @@ _news_lock = threading.Lock()
 
 
 def task_daily_forecast():
-    from ml.fix_I_forecast.predictor import run_daily_forecast
+    from src.ml.fix_I_forecast.predictor import run_daily_forecast
 
     print("[ETL] Uruchamianie prognozy cen Fixing I...")
     try:
