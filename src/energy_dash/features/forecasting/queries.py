@@ -1,8 +1,9 @@
 import pandas as pd
 import streamlit as st
 from sqlalchemy import text
+from sqlalchemy.sql.elements import TextClause
 
-from src.common.database import engine
+from energy_dash.core.db import engine
 
 
 @st.cache_data(ttl="5m")
@@ -57,3 +58,25 @@ def get_energy_prices_and_forecasts(
     df.drop(columns=["datetime_utc"], inplace=True)
 
     return df
+
+
+QUERY = text("""
+    SELECT *
+    FROM v_energy_summary
+    WHERE datetime_utc >= :start_date 
+      AND datetime_utc < :end_date
+    ORDER BY datetime_utc ASC
+""")
+
+
+def get_data_from_db(sql_query: TextClause, params: dict) -> pd.DataFrame:
+    try:
+        with engine.connect() as connection:
+            return pd.read_sql_query(
+                sql=sql_query,
+                con=connection,
+                params=params,
+                parse_dates=["datetime_utc"],
+            )
+    except Exception as e:
+        raise RuntimeError(f"Błąd pobierania danych z bazy: {e}") from e

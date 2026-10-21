@@ -5,8 +5,8 @@ from urllib.parse import quote_plus
 import feedparser
 from sqlalchemy.dialects.postgresql import insert
 
-from src.common.database import SessionLocal
-from src.models_db.news import NewsArticle
+from energy_dash.core.db import SessionLocal
+from energy_dash.features.news.models import NewsArticle
 
 # (temat, zapytanie, hl, gl, ceid)
 FEEDS = [

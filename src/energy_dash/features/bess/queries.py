@@ -2,7 +2,7 @@ import pandas as pd
 import streamlit as st
 from sqlalchemy import text
 
-from src.common.database import engine
+from energy_dash.core.db import engine
 
 
 @st.cache_data(ttl="5m")

@@ -1,16 +1,14 @@
-import numpy as np
+# src/energy_dash/features/forecasting/evaluation.py
 import pandas as pd
 from mlflow import MlflowClient
 from sqlalchemy import text
-from src.common.config import get_settings
 
 from energy_dash.core.db import engine
-from energy_dash.core.timeutils import to_local_tz
-from src.ml.fix_I_forecast.predictor import init_mlflow
+from energy_dash.core.settings import get_settings
+from energy_dash.features.forecasting.metrics import compute_metrics
+from energy_dash.features.forecasting.predictor import init_mlflow
 
 settings = get_settings()
-
-PEAK_HOURS_LOCAL = settings.forecast.peak_hours_local
 
 EVAL_QUERY = text("""
 WITH hourly_energy AS (
@@ -32,27 +30,6 @@ LEFT JOIN hourly_energy lag ON lag.datetime_utc = f.datetime_utc - INTERVAL '24 
 WHERE f.datetime_utc >= :start
 ORDER BY f.datetime_utc;
 """)
-
-
-def compute_metrics(
-    y_true: pd.Series, y_pred: pd.Series, y_b0: pd.Series | None = None
-) -> dict[str, float]:
-    err = y_pred - y_true
-    abs_err = err.abs()
-    peak = np.isin(to_local_tz(y_true).index.hour, PEAK_HOURS_LOCAL)
-
-    m = {
-        "mae": float(abs_err.mean()),
-        "rmse": float(np.sqrt((err**2).mean())),
-        "wape": float(abs_err.sum() / y_true.abs().sum()),
-        "bias": float(err.mean()),
-        "mae_peak": float(abs_err[peak].mean()) if peak.any() else np.nan,
-        "bias_peak": float(err[peak].mean()) if peak.any() else np.nan,
-        "n_obs": float(len(y_true)),
-    }
-    if y_b0 is not None and y_b0.notna().all():
-        m["rmae"] = m["mae"] / float((y_b0 - y_true).abs().mean())
-    return {k: v for k, v in m.items() if not np.isnan(v)}
 
 
 def evaluate_forecasts(days_back: int = 7) -> int:
@@ -80,11 +57,19 @@ def evaluate_forecasts(days_back: int = 7) -> int:
             if client.get_run(run_id).data.tags.get("evaluated") == "true":
                 continue
             g = g.set_index("datetime_utc")
-            metrics = compute_metrics(g["actual"], g["forecast_pln_mwh"], g["b0"])
+
+            metrics = compute_metrics(
+                y_true=g["actual"],
+                y_pred=g["forecast_pln_mwh"],
+                y_b0=g["b0"],
+                peak_hours=settings.forecast.peak_hours_local,
+            )
+
             for k, v in metrics.items():
                 client.log_metric(run_id, k, v)
             client.set_tag(run_id, "evaluated", "true")
             n_done += 1
-        except Exception as e:  # jeden zły run nie może zatrzymać reszty
+        except Exception as e:
             print(f"[EVAL] Run {run_id} (model v{mv}): {e}")
+
     return n_done

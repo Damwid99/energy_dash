@@ -3,8 +3,8 @@ from datetime import UTC, date, datetime, time, timedelta
 import pandas as pd
 import streamlit as st
 
-from src.common.database import SessionLocal
-from src.models_db.news import NewsArticle, NewsDigest
+from energy_dash.core.db import SessionLocal
+from energy_dash.features.news.models import NewsArticle, NewsDigest
 
 
 @st.cache_data(ttl=300)

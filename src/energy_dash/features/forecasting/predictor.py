@@ -5,17 +5,19 @@ from sklearn.base import clone
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
 
-from src.common.database import engine
-from src.common.timeutils import to_local_tz
-from src.config.settings import get_settings
-from src.ml.fix_I_forecast.dataset import (
-    QUERY,
-    get_data_from_db,
+from energy_dash.core.db import engine
+from energy_dash.core.settings import get_settings
+from energy_dash.core.timeutils import to_local_tz
+from energy_dash.features.forecasting.dataset import (
     get_start_end_date,
     transform_data_for_model,
 )
-from src.ml.fix_I_forecast.features import ALL_COLUMNS, FEATURES_VERSION, TARGET
-from src.models_db.forecasts import DAPriceForecast
+from energy_dash.features.forecasting.features import ALL_COLUMNS, FEATURES_VERSION, TARGET
+from energy_dash.features.forecasting.models import DAPriceForecast
+from energy_dash.features.forecasting.queries import (
+    QUERY,
+    get_data_from_db,
+)
 
 settings = get_settings()
 

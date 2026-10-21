@@ -6,8 +6,8 @@ from typing import Literal
 import numpy as np
 import pandas as pd
 
-from src.ml.bess.battery import BatteryParams, optimize_day, validate_schedule
-from src.ml.bess.settlement import settle_schedule
+from energy_dash.features.bess.battery import BatteryParams, optimize_day, validate_schedule
+from energy_dash.features.bess.settlement import settle_schedule
 
 
 class BessStrategy(StrEnum):
