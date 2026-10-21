@@ -1,6 +1,6 @@
 from sqlalchemy import Column, DateTime, Float
 
-from src.common.database import Base
+from energy_dash.core.db import Base
 
 
 class EnergyPrice(Base):
@@ -18,32 +18,6 @@ class EnergyPrice(Base):
 
     def __repr__(self):
         return f"<EnergyPrice(datetime_utc='{self.datetime_utc}', rce='{self.rce_pln_mwh}')>"
-
-
-class PseOzeForecast(Base):
-    __tablename__ = "pse_forecasts"
-
-    issue_datetime_utc = Column(DateTime(timezone=True), primary_key=True)
-    publication_datetime_utc = Column(DateTime(timezone=True), index=True)
-
-    pv_fcst_pse = Column(Float, nullable=True)
-    wind_fcst_pse = Column(Float, nullable=True)
-    demand_fcst_pse = Column(Float, nullable=True)
-    exchange_fcst_pse = Column(Float, nullable=True)
-
-    resload_fcst_pse = Column(Float, nullable=True)
-
-
-class PseOzeActual(Base):
-    __tablename__ = "pse_actuals"
-
-    datetime_utc = Column(DateTime(timezone=True), primary_key=True)
-
-    pv_actual_pse = Column(Float, nullable=True)
-    wind_actual_pse = Column(Float, nullable=True)
-    demand_actual_pse = Column(Float, nullable=True)
-    exchange_actual_pse = Column(Float, nullable=True)
-    resload_actual_pse = Column(Float, nullable=True)
 
 
 class VEnergySummary(Base):
