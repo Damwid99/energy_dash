@@ -4,9 +4,9 @@ from datetime import UTC, date, datetime, timedelta
 from typing import Any, cast
 
 import requests
-from energy_dash.core.http import build_retrying_session
 
 from energy_dash.core.db import SessionLocal
+from energy_dash.core.http import build_retrying_session
 from energy_dash.features.power_system.models import PseOzeActual, PseOzeForecast
 
 

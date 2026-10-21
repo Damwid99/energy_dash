@@ -38,9 +38,6 @@ dependencies = [
     "trafilatura>=2.2.0",
 ]
 
-[project.scripts]
-energy-dash = "energy_dash:main"
-
 [dependency-groups]
 dev = [
     "mypy>=2.4.0",

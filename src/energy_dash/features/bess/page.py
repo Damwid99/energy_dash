@@ -149,7 +149,7 @@ def render():
                     format="percent",
                 )
 
-            submitted = st.form_submit_button("Wyznacz strategie", type="primary")
+            st.form_submit_button("Wyznacz strategie", type="primary")
 
     def strategy_categories_by_day(results, string_day):
         strategy_keys = results.schedules.keys()
@@ -159,7 +159,7 @@ def render():
                     st.info(note)
             return None
 
-        strategy_names = {key: strategies_info.get(key, (key, ""))[0] for key in strategy_keys}
+        # strategy_names = {key: strategies_info.get(key, (key, ""))[0] for key in strategy_keys}
         selected = st.pills(
             "Strategia",
             options=strategy_keys,

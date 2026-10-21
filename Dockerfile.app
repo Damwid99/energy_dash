@@ -16,4 +16,4 @@ COPY .streamlit/ /app/.streamlit/
 
 EXPOSE 8501
 
-CMD ["streamlit", "run", "src/app/main.py"]
+CMD ["streamlit", "run", "src/energy_dash/app/main.py"]

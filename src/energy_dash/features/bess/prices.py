@@ -9,9 +9,7 @@ from energy_dash.core.timeutils import ensure_utc_index, to_local_tz
 #     return data.sort_index()
 
 
-def prepare_price_data(
-    real_1h: pd.DataFrame, forecast_h: pd.DataFrame
-) -> tuple[pd.DataFrame, list]:
+def prepare_price_data(real_1h: pd.DataFrame, forecast_h: pd.DataFrame) -> pd.DataFrame:
     real_data = real_1h.copy()
     forecast = forecast_h.copy()
 

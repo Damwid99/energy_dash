@@ -15,4 +15,4 @@ RUN uv sync --frozen --no-install-project
 
 COPY src/ /app/src/
 
-CMD ["python", "src/run_etl.py"]
+CMD ["python", "-m", "energy_dash.etl"]

@@ -2,9 +2,8 @@ import time
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
-from energy_dash.core.http import build_retrying_session
-
 from energy_dash.core.db import SessionLocal
+from energy_dash.core.http import build_retrying_session
 from energy_dash.features.market_prices.models import EnergyPrice
 
 
