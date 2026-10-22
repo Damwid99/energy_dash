@@ -55,6 +55,9 @@ services:
     restart: always
     env_file:
       - .env
+    environment:
+      - MLFLOW_SERVER_ENABLE_JOB_EXECUTION=false
+    mem_limit: 512m
     depends_on:
       postgres_db:
         condition: service_healthy
@@ -67,6 +70,8 @@ services:
       --serve-artifacts
       --host 0.0.0.0
       --port 5000
+      --workers 1
+      --gunicorn-opts "--max-requests 500 --max-requests-jitter 50"
       --allowed-hosts "*"
       --cors-allowed-origins "*"
 
