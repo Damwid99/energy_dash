@@ -70,20 +70,21 @@ def read_df(
         df[index_col] = pd.to_datetime(df[index_col], utc=True)
         if tz is not None:
             local_col = "datetime_local" if index_col == "datetime_utc" else index_col
-            df[index_col] = df[index_col].dt.tz_convert(tz)
+            df[local_col] = df[index_col].dt.tz_convert(tz)
             df.set_index(local_col, inplace=True)
             if local_col != index_col and index_col in df.columns:
                 df.drop(columns=[index_col], inplace=True)
         else:
             df.set_index(index_col, inplace=True)
         df.sort_index(inplace=True)
+
     return df
 
 
 def postgres_upsert(
     table_model: type[Base],
     records: list[dict[str, Any]],
-    index_elemnts: list[str],
+    index_elements: list[str],
     update_columns: list[str],
 ):
     """Wstawia rekordy do tabeli PostgreSQL z aktualizacją przy konflikcie klucza (UPSERT).
@@ -104,7 +105,7 @@ def postgres_upsert(
     stmt = insert(table_model).values(records)
     update_dict = {col: getattr(stmt.excluded, col) for col in update_columns}
     upsert_stmt = stmt.on_conflict_do_update(
-        index_elements=index_elemnts,
+        index_elements=index_elements,
         set_=update_dict,
     )
 
