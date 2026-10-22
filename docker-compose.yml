@@ -71,7 +71,7 @@ services:
       --host 0.0.0.0
       --port 5000
       --workers 1
-      --gunicorn-opts "--max-requests 500 --max-requests-jitter 50"
+      --uvicorn-opts "--limit-max-requests 1000"
       --allowed-hosts "*"
       --cors-allowed-origins "*"
 
