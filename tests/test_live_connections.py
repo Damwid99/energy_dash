@@ -93,6 +93,7 @@ class TestMlflowLiveConnection:
         assert hasattr(model, "fit") and hasattr(model, "predict")
 
 
+@pytest.mark.skip(reason="Ollama jest wyłączona/opcjonalna w środowisku testowym")
 class TestOllamaLiveConnection:
     """Testy połączenia z serwerem LLM (Ollama)."""
 
