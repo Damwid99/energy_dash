@@ -3,8 +3,7 @@ from zoneinfo import ZoneInfo
 import pytest
 from pydantic import SecretStr, ValidationError
 
-import src.common.config as legacy_config
-from src.config.settings import (
+from energy_dash.core.settings import (
     DataBaseSettings,
     ForecastSettings,
     LlmSettings,
@@ -24,7 +23,7 @@ def test_database_settings_from_env(monkeypatch):
     monkeypatch.setenv("POSTGRES_PORT", "5433")
     monkeypatch.setenv("POSTGRES_DB", "test_energy_db")
 
-    db = DataBaseSettings(_env_file=None)
+    db = DataBaseSettings(_env_file=None)  # type: ignore[call-arg]
 
     assert db.user == "test_user"
     assert isinstance(db.password, SecretStr)
@@ -43,7 +42,7 @@ def test_database_settings_missing_password_raises(monkeypatch):
     monkeypatch.delenv("POSTGRES_PASSWORD", raising=False)
 
     with pytest.raises(ValidationError) as exc_info:
-        DataBaseSettings(_env_file=None)
+        DataBaseSettings(_env_file=None)  # type: ignore[call-arg]
 
     assert "password" in str(exc_info.value)
 
@@ -55,7 +54,7 @@ def test_mlflow_settings_defaults_and_overrides(monkeypatch):
     monkeypatch.delenv("MLFLOW_MODEL_ALIAS", raising=False)
     monkeypatch.delenv("MLFLOW_PROD_EXPERIMENT", raising=False)
 
-    ml_default = MlflowSettings(_env_file=None)
+    ml_default = MlflowSettings(_env_file=None)  # type: ignore[call-arg]
     assert ml_default.tracking_uri == "http://localhost:5000"
     assert ml_default.model_name == "da_price_fixing1"
     assert ml_default.model_alias == "champion"
@@ -63,21 +62,21 @@ def test_mlflow_settings_defaults_and_overrides(monkeypatch):
 
     monkeypatch.setenv("MLFLOW_TRACKING_URI", "http://mlflow-prod:5000")
     monkeypatch.setenv("MLFLOW_MODEL_ALIAS", "staging")
-    ml_custom = MlflowSettings(_env_file=None)
+    ml_custom = MlflowSettings(_env_file=None)  # type: ignore[call-arg]
     assert ml_custom.tracking_uri == "http://mlflow-prod:5000"
     assert ml_custom.model_alias == "staging"
 
 
 def test_forecast_settings_defaults_and_overrides(monkeypatch):
     """Weryfikuje ustawienia horyzontu i godzin szczytowych prognozowania."""
-    fc = ForecastSettings(_env_file=None)
+    fc = ForecastSettings(_env_file=None)  # type: ignore[call-arg]
     assert fc.window_days == 365
     assert fc.min_train_days == 20
     assert fc.peak_hours_local == (18, 19, 20, 21)
 
     monkeypatch.setenv("FORECAST_WINDOW_DAYS", "180")
     monkeypatch.setenv("FORECAST_MIN_TRAIN_DAYS", "14")
-    fc_custom = ForecastSettings(_env_file=None)
+    fc_custom = ForecastSettings(_env_file=None)  # type: ignore[call-arg]
     assert fc_custom.window_days == 180
     assert fc_custom.min_train_days == 14
 
@@ -88,7 +87,7 @@ def test_llm_settings_defaults_and_overrides(monkeypatch):
     monkeypatch.delenv("LLM_MODEL", raising=False)
     monkeypatch.delenv("LLM_USE_RESPONSE_FORMAT", raising=False)
 
-    llm = LlmSettings(_env_file=None)
+    llm = LlmSettings(_env_file=None)  # type: ignore[call-arg]
     assert llm.api_base == "http://localhost:11434"
     assert llm.model == "ollama_chat/gpt-oss:20b-cloud"
     assert llm.use_response_format is True
@@ -96,7 +95,7 @@ def test_llm_settings_defaults_and_overrides(monkeypatch):
     monkeypatch.setenv("OLLAMA_API_BASE", "http://ollama-server:11434")
     monkeypatch.setenv("LLM_MODEL", "ollama_chat/llama3:8b")
     monkeypatch.setenv("LLM_USE_RESPONSE_FORMAT", "0")
-    llm_custom = LlmSettings(_env_file=None)
+    llm_custom = LlmSettings(_env_file=None)  # type: ignore[call-arg]
     assert llm_custom.api_base == "http://ollama-server:11434"
     assert llm_custom.model == "ollama_chat/llama3:8b"
     assert llm_custom.use_response_format is False
@@ -154,16 +153,10 @@ def test_settings_uses_default_factory_for_subsettings(monkeypatch):
     assert fresh.mlflow.model_alias == "custom_alias_xyz"
 
 
-def test_get_settings_singleton_and_legacy_config():
-    """Weryfikuje, że get_settings() zwraca spójny obiekt Settings i współpracuje z common.config."""
+def test_get_settings_singleton():
+    """Weryfikuje, że get_settings() zwraca spójny obiekt Settings (singleton lru_cache)."""
     s1 = get_settings()
     s2 = get_settings()
     assert s1 is s2
     assert isinstance(s1, Settings)
     assert s1.tz == ZoneInfo("Europe/Warsaw")
-
-    assert legacy_config.DATABASE_URL == s1.db.url
-    assert legacy_config.DB_USER == s1.db.user
-    assert legacy_config.DB_HOST == s1.db.host
-    assert legacy_config.DB_PORT == s1.db.port
-    assert legacy_config.DB_NAME == s1.db.db

@@ -1,4 +1,4 @@
-"""Testy modułu src/common/llm.py oraz schematów Pydantic z src/schemas/news.py."""
+"""Testy modułu energy_dash.core.llm oraz schematów Pydantic z energy_dash.features.news.schemas."""
 
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -6,8 +6,8 @@ from unittest.mock import patch
 import pytest
 from pydantic import ValidationError
 
-from src.common.llm import _extract_json, ask_structured
-from src.schemas.news import Digest, DigestItem, SelectedArticle, Selection
+from energy_dash.core.llm import _extract_json, ask_structured
+from energy_dash.features.news.schemas import Digest, DigestItem, SelectedArticle, Selection
 
 
 class TestNewsSchemas:
@@ -106,7 +106,7 @@ class TestLlmModule:
                 )
             ]
         )
-        with patch("src.common.llm.litellm.completion", return_value=fake_resp) as mock_comp:
+        with patch("energy_dash.core.llm.litellm.completion", return_value=fake_resp) as mock_comp:
             res = ask_structured("System prompt", "User prompt", Selection, max_retries=1)
             assert isinstance(res, Selection)
             assert len(res.selected) == 1
@@ -125,7 +125,7 @@ class TestLlmModule:
             ]
         )
         with patch(
-            "src.common.llm.litellm.completion", side_effect=[bad_resp, good_resp]
+            "energy_dash.core.llm.litellm.completion", side_effect=[bad_resp, good_resp]
         ) as mock_comp:
             res = ask_structured("System prompt", "User prompt", Selection, max_retries=1)
             assert res.selected[0].id == 2
@@ -135,7 +135,7 @@ class TestLlmModule:
         bad_resp = SimpleNamespace(
             choices=[SimpleNamespace(message=SimpleNamespace(content="niepoprawny json"))]
         )
-        with patch("src.common.llm.litellm.completion", return_value=bad_resp) as mock_comp:
+        with patch("energy_dash.core.llm.litellm.completion", return_value=bad_resp) as mock_comp:
             with pytest.raises(RuntimeError, match="LLM nie zwrócił poprawnego JSON-a"):
                 ask_structured("System prompt", "User prompt", Selection, max_retries=1)
             assert mock_comp.call_count == 2

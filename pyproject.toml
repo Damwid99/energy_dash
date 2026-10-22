@@ -38,9 +38,6 @@ dependencies = [
     "trafilatura>=2.2.0",
 ]
 
-[project.scripts]
-energy-dash = "energy_dash:main"
-
 [dependency-groups]
 dev = [
     "mypy>=2.4.0",
@@ -53,7 +50,7 @@ requires = ["uv_build>=0.12.12,<0.13.0"]
 build-backend = "uv_build"
 
 [tool.pytest.ini_options]
-pythonpath = ["."]
+pythonpath = ["src"]
 testpaths = ["tests"]
 
 [tool.mypy]
@@ -64,3 +61,4 @@ exclude = [
 ]
 ignore_missing_imports = true
 check_untyped_defs = true
+mypy_path = "src"

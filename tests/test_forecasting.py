@@ -6,14 +6,14 @@ import pandas as pd
 import pytest
 from sklearn.dummy import DummyRegressor
 
-import src.ml.fix_I_forecast.evaluation as evaluation_mod
-import src.ml.fix_I_forecast.predictor as predictor_mod
-from src.ml.fix_I_forecast.dataset import (
+import energy_dash.features.forecasting.evaluation as evaluation_mod
+import energy_dash.features.forecasting.predictor as predictor_mod
+from energy_dash.features.forecasting.dataset import (
     get_start_end_date,
     transform_data_for_model,
 )
-from src.ml.fix_I_forecast.evaluation import compute_metrics, evaluate_forecasts
-from src.ml.fix_I_forecast.features import (
+from energy_dash.features.forecasting.evaluation import evaluate_forecasts
+from energy_dash.features.forecasting.features import (
     ALL_COLUMNS,
     DEMAND,
     EXCHANGE,
@@ -22,7 +22,8 @@ from src.ml.fix_I_forecast.features import (
     TARGET,
     WIND,
 )
-from src.ml.fix_I_forecast.predictor import (
+from energy_dash.features.forecasting.metrics import compute_metrics
+from energy_dash.features.forecasting.predictor import (
     load_champion_model,
     run_daily_forecast,
     validate_inputs,

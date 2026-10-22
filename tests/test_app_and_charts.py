@@ -1,4 +1,4 @@
-"""Testy modeli ORM, wykresów Plotly (charts.py), komponentów (utils.py) oraz data_provider.py."""
+"""Testy modeli ORM, wykresów Plotly, komponentów UI oraz warstwy zapytań (queries.py)."""
 
 from datetime import UTC, date, datetime
 from types import SimpleNamespace
@@ -8,32 +8,38 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 
-from src.app.components.charts import (
+import energy_dash.db_models  # noqa: F401
+from energy_dash.core.db import Base
+from energy_dash.features.assets.queries import (
+    get_asset_geneartion_and_prices,
+    get_assets_capacity_factors,
+    get_assets_metadata,
+)
+from energy_dash.features.bess.charts import plot_strategy_schedule
+from energy_dash.features.bess.queries import get_data_for_bess
+from energy_dash.features.forecasting.queries import get_energy_prices_and_forecasts
+from energy_dash.features.market_prices.charts import (
     _get_x_axis,
     get_background_colors,
     plot_price_indices_contracting_status_1h,
     plot_price_indices_contracting_status_15min,
-    plot_strategy_schedule,
 )
-from src.app.components.utils import render_items
-from src.app.data_provider import (
-    get_asset_geneartion_and_prices,
-    get_data_for_bess,
-    get_dates_of_summaries,
+from energy_dash.features.market_prices.models import EnergyPrice
+from energy_dash.features.market_prices.queries import (
     get_energy_prices,
-    get_energy_prices_and_forecasts,
     get_kse_contracting_status,
     get_min_max_date,
+)
+from energy_dash.features.news.queries import (
+    get_dates_of_summaries,
     get_news_articles,
     get_news_digest,
 )
-from src.common.database import Base
-from src.models_db import energy, forecasts, news, renewables  # noqa: F401
-from src.models_db.energy import EnergyPrice
+from energy_dash.features.news.ui import render_items
 
 
 class TestOrmModels:
-    """Testy definicji tabel SQLAlchemy w src/models_db/."""
+    """Testy definicji tabel SQLAlchemy rejestrowanych przez energy_dash.db_models."""
 
     def test_all_expected_tables_registered_in_metadata(self):
         expected_tables = {
@@ -56,7 +62,7 @@ class TestOrmModels:
 
 
 class TestCharts:
-    """Testy funkcji generujących wykresy Plotly w src/app/components/charts.py."""
+    """Testy funkcji generujących wykresy Plotly w market_prices/charts.py oraz bess/charts.py."""
 
     def test_get_background_colors(self):
         s = pd.Series([10.0, -5.0, 0.0, np.nan])
@@ -93,7 +99,6 @@ class TestCharts:
         fig1h = plot_price_indices_contracting_status_1h(df)
         assert isinstance(fig15, go.Figure)
         assert isinstance(fig1h, go.Figure)
-        # 1 bar + 3*2 (przedziały ufności) + 1 prognoza + 3 indeksy = 11 trace'ów
         assert len(fig15.data) == 11
 
     def test_plot_strategy_schedule_returns_two_row_subplot_figure(self):
@@ -121,14 +126,14 @@ class TestCharts:
             strategy_name="Optymalizacja prognostyczna",
         )
         assert isinstance(fig, go.Figure)
-        assert len(fig.data) == 5  # price_real, price_forecast, discharge, charge, soc
+        assert len(fig.data) == 5
 
 
 class TestComponentUtils:
-    """Testy funkcji pomocniczych w src/app/components/utils.py."""
+    """Testy funkcji pomocniczych w energy_dash.features.news.ui."""
 
     def test_render_items_calls_info_when_horizon_empty(self):
-        with patch("src.app.components.utils.st") as mock_st:
+        with patch("energy_dash.features.news.ui.st") as mock_st:
             render_items([{"horizon": "long"}], "short")
             mock_st.info.assert_called_once()
             mock_st.markdown.assert_not_called()
@@ -143,7 +148,7 @@ class TestComponentUtils:
                 "sources": [{"id": 1, "source": "PAP", "url": "https://pap.pl/1"}],
             }
         ]
-        with patch("src.app.components.utils.st") as mock_st:
+        with patch("energy_dash.features.news.ui.st") as mock_st:
             render_items(items, "short")
             mock_st.markdown.assert_called_once()
             arg = mock_st.markdown.call_args[0][0]
@@ -152,32 +157,29 @@ class TestComponentUtils:
             assert "[PAP](https://pap.pl/1)" in arg
 
 
-class TestDataProvider:
-    """Testy funkcji pobierania danych z bazy w src/app/data_provider.py (z mockowanym SQL)."""
+class TestFeatureQueries:
+    """Testy funkcji pobierania danych w features/*/queries.py (z mockowanym SQL)."""
 
     def test_get_min_max_date_returns_none_when_table_empty(self):
-        get_min_max_date.clear()
         empty_df = pd.DataFrame({"min_date": [None], "max_date": [None]})
-        with patch("src.app.data_provider.pd.read_sql", return_value=empty_df):
+        with patch("energy_dash.features.market_prices.queries.pd.read_sql", return_value=empty_df):
             min_d, max_d = get_min_max_date("fixing_1_pln_mwh")
             assert min_d is None and max_d is None
 
     def test_get_min_max_date_converts_to_warsaw_tz(self):
-        get_min_max_date.clear()
         raw_df = pd.DataFrame(
             {
                 "min_date": [datetime(2026, 10, 1, 22, 0, tzinfo=UTC)],
                 "max_date": [datetime(2026, 10, 20, 21, 45, tzinfo=UTC)],
             }
         )
-        with patch("src.app.data_provider.pd.read_sql", return_value=raw_df):
+        with patch("energy_dash.features.market_prices.queries.pd.read_sql", return_value=raw_df):
             min_d, max_d = get_min_max_date("fixing_1_pln_mwh")
             assert min_d is not None and max_d is not None
             assert str(min_d.tzinfo) == "Europe/Warsaw"
             assert min_d.date() == date(2026, 10, 2)
 
     def test_get_energy_prices_converts_utc_to_local_index(self):
-        get_energy_prices.clear()
         raw_df = pd.DataFrame(
             {
                 "datetime_utc": pd.date_range(
@@ -186,7 +188,7 @@ class TestDataProvider:
                 "fixing_1_pln_mwh": [400.0, 405.0, 410.0, 415.0],
             }
         )
-        with patch("src.app.data_provider.pd.read_sql", return_value=raw_df):
+        with patch("energy_dash.features.market_prices.queries.pd.read_sql", return_value=raw_df):
             df = get_energy_prices(
                 pd.Timestamp("2026-10-19 22:00", tz="UTC"),
                 pd.Timestamp("2026-10-19 23:00", tz="UTC"),
@@ -197,7 +199,6 @@ class TestDataProvider:
             assert "datetime_utc" not in df.columns
 
     def test_get_kse_contracting_status_converts_utc_to_local_index(self):
-        get_kse_contracting_status.clear()
         raw_df = pd.DataFrame(
             {
                 "datetime_utc": pd.date_range(
@@ -206,7 +207,7 @@ class TestDataProvider:
                 "kse_contracting_status": [50.0, -30.0],
             }
         )
-        with patch("src.app.data_provider.pd.read_sql", return_value=raw_df):
+        with patch("energy_dash.features.market_prices.queries.pd.read_sql", return_value=raw_df):
             df = get_kse_contracting_status(
                 pd.Timestamp("2026-10-19 22:00", tz="UTC"),
                 pd.Timestamp("2026-10-19 22:30", tz="UTC"),
@@ -214,8 +215,15 @@ class TestDataProvider:
             assert str(df.index.tz) == "Europe/Warsaw"
             assert list(df["kse_contracting_status"]) == [50.0, -30.0]
 
+    def test_get_assets_metadata_and_capacity_factors(self):
+        meta_df = pd.DataFrame({"id": [1], "code": ["wind_pomorze"], "capacity_mw": [50.0]})
+        cf_df = pd.DataFrame({"farm_id": [1], "capacity_factor": [0.35]})
+        with patch("energy_dash.features.assets.queries.pd.read_sql", return_value=meta_df):
+            assert len(get_assets_metadata()) == 1
+        with patch("energy_dash.features.assets.queries.pd.read_sql", return_value=cf_df):
+            assert get_assets_capacity_factors().iloc[0]["capacity_factor"] == 0.35
+
     def test_get_asset_generation_and_prices_dropna(self):
-        get_asset_geneartion_and_prices.clear()
         raw_df = pd.DataFrame(
             {
                 "farm_id": [1, 1],
@@ -227,13 +235,12 @@ class TestDataProvider:
                 "cen_pln_mwh": [390.0, 420.0],
             }
         )
-        with patch("src.app.data_provider.pd.read_sql", return_value=raw_df):
+        with patch("energy_dash.features.assets.queries.pd.read_sql", return_value=raw_df):
             df = get_asset_geneartion_and_prices(asset_id=1, dropna=True)
             assert len(df) == 1
             assert str(df.index.tz) == "Europe/Warsaw"
 
     def test_get_data_for_bess_keeps_utc_index(self):
-        get_data_for_bess.clear()
         raw_df = pd.DataFrame(
             {
                 "datetime_utc": pd.date_range("2026-10-19 22:00", periods=24, freq="1h"),
@@ -241,13 +248,12 @@ class TestDataProvider:
                 "fixing_1_pln_mwh": [410.0] * 24,
             }
         )
-        with patch("src.app.data_provider.pd.read_sql", return_value=raw_df):
+        with patch("energy_dash.features.bess.queries.pd.read_sql", return_value=raw_df):
             df = get_data_for_bess("2026-10-19T22:00:00Z", "2026-10-20T22:00:00Z", "3")
             assert str(df.index.tz) == "UTC"
             assert len(df) == 24
 
     def test_get_energy_prices_and_forecasts_sets_warsaw_index(self):
-        get_energy_prices_and_forecasts.clear()
         raw_df = pd.DataFrame(
             {
                 "datetime_utc": pd.date_range(
@@ -259,7 +265,7 @@ class TestDataProvider:
                 "fixing_1_pln_mwh": [410.0] * 4,
             }
         )
-        with patch("src.app.data_provider.pd.read_sql", return_value=raw_df):
+        with patch("energy_dash.features.forecasting.queries.pd.read_sql", return_value=raw_df):
             df = get_energy_prices_and_forecasts(
                 pd.Timestamp("2026-10-19 22:00", tz="UTC"),
                 pd.Timestamp("2026-10-19 23:00", tz="UTC"),
@@ -268,10 +274,6 @@ class TestDataProvider:
             assert "datetime_utc" not in df.columns
 
     def test_get_news_functions_mocked_session(self):
-        get_news_articles.clear()
-        get_news_digest.clear()
-        get_dates_of_summaries.clear()
-
         fake_art = SimpleNamespace(
             id=1,
             topic="power",
@@ -298,7 +300,7 @@ class TestDataProvider:
             (date(2026, 10, 20),)
         ]
 
-        with patch("src.app.data_provider.SessionLocal", return_value=mock_session):
+        with patch("energy_dash.features.news.queries.SessionLocal", return_value=mock_session):
             arts_df = get_news_articles(date(2026, 10, 20))
             assert len(arts_df) == 1
             assert arts_df.iloc[0]["url"] == "https://pap.pl/1"

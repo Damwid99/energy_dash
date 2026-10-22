@@ -14,10 +14,8 @@ select = ["E", "F", "I", "B", "UP", "N"]
 ignore = ["E501", "N999"]
 
 [lint.per-file-ignores]
-"src/app/pages/*" = ["F401", "F841", "I001"]
-"**/run_etl.py" = ["F401", "F841", "I001"]
+"**/etl/scheduler.py" = ["F401", "F841", "I001"]
 "*.ipynb" = ["E731", "UP031", "T201"]
-"src/scripts/*" = ["E402"]
 
 [format]
 quote-style = "double"

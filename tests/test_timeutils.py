@@ -4,7 +4,7 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 import pytest
 
-from src.common.timeutils import ensure_utc_index, to_local_tz
+from energy_dash.core.timeutils import ensure_utc_index, to_local_tz
 
 
 def test_ensure_utc_index_empty_df():

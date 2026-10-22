@@ -15,11 +15,11 @@ import requests
 from mlflow import MlflowClient
 from sqlalchemy import inspect, text
 
-from src.common.database import engine
-from src.config.settings import get_settings
-from src.ml.fix_I_forecast.dataset import QUERY, get_data_from_db
-from src.ml.fix_I_forecast.features import FEATURES_VERSION
-from src.ml.fix_I_forecast.predictor import init_mlflow, load_champion_model
+from energy_dash.core.db import engine
+from energy_dash.core.settings import get_settings
+from energy_dash.features.forecasting.features import FEATURES_VERSION
+from energy_dash.features.forecasting.predictor import init_mlflow, load_champion_model
+from energy_dash.features.forecasting.queries import QUERY, get_data_from_db
 
 pytestmark = pytest.mark.skipif(
     os.environ.get("SKIP_LIVE_TESTS") == "1",
@@ -93,6 +93,7 @@ class TestMlflowLiveConnection:
         assert hasattr(model, "fit") and hasattr(model, "predict")
 
 
+@pytest.mark.skip(reason="Ollama jest wyłączona/opcjonalna w środowisku testowym")
 class TestOllamaLiveConnection:
     """Testy połączenia z serwerem LLM (Ollama)."""
 

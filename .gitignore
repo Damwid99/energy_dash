@@ -24,3 +24,5 @@ docker-compose.override.yml
 .mypy_cache/
 
 REFACTOR_PLAN.md
+
+docs/

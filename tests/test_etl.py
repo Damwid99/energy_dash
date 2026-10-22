@@ -1,4 +1,4 @@
-"""Testy ekstraktorów i transformacji ETL (TGE, PSE, RSS, News Digest, run_etl)."""
+"""Testy ekstraktorów i transformacji ETL (TGE, PSE, RSS, News Digest, scheduler)."""
 
 from datetime import UTC, date, datetime
 from types import SimpleNamespace
@@ -6,16 +6,14 @@ from unittest.mock import MagicMock, patch
 from zoneinfo import ZoneInfo
 
 import pytest
+import requests
 
-from src.etl.extract.news_rss import _feed_url, fetch_and_save_news
-from src.etl.extract.pse_api import (
-    _fetch_kse_demand_hourly,
+from energy_dash.core.http import build_retrying_session
+from energy_dash.features.market_prices.etl_pse import (
     fetch_and_save_cen,
-    fetch_and_save_oze,
-    fetch_and_save_oze_actuals,
     fetch_and_save_rce,
 )
-from src.etl.extract.tge_api import (
+from energy_dash.features.market_prices.etl_tge import (
     _expected_quarters,
     _num,
     earliest_delivery_date,
@@ -24,10 +22,22 @@ from src.etl.extract.tge_api import (
     parse_tge_day,
     save_tge_day,
 )
-from src.etl.transform.news_digest import ensure_body, generate_digest
-from src.schemas.news import Digest, DigestItem, SelectedArticle, Selection
+from energy_dash.features.news.digest import ensure_body, generate_digest
+from energy_dash.features.news.etl_rss import _feed_url, fetch_and_save_news
+from energy_dash.features.news.schemas import Digest, DigestItem, SelectedArticle, Selection
+from energy_dash.features.power_system.etl import (
+    _fetch_kse_demand_hourly,
+    fetch_and_save_oze,
+    fetch_and_save_oze_actuals,
+)
 
 WARSAW = ZoneInfo("Europe/Warsaw")
+
+
+def test_build_retrying_session_returns_requests_session():
+    """Weryfikuje tworzenie sesji HTTP z adapterem retry."""
+    s = build_retrying_session(total=2, backoff_factor=0.5)
+    assert isinstance(s, requests.Session)
 
 
 def _build_tge_html(
@@ -181,11 +191,20 @@ class TestTgeApi:
         fake_session.query.return_value.filter.return_value.all.return_value = []
 
         with (
-            patch("src.etl.extract.tge_api.latest_delivery_date", return_value=d),
-            patch("src.etl.extract.tge_api.earliest_delivery_date", return_value=date(2026, 9, 1)),
-            patch("src.etl.extract.tge_api._fetch_html", return_value=html),
-            patch("src.etl.extract.tge_api.SessionLocal", return_value=fake_session),
-            patch("src.etl.extract.tge_api.time.sleep"),
+            patch(
+                "energy_dash.features.market_prices.etl_tge.latest_delivery_date",
+                return_value=d,
+            ),
+            patch(
+                "energy_dash.features.market_prices.etl_tge.earliest_delivery_date",
+                return_value=date(2026, 9, 1),
+            ),
+            patch("energy_dash.features.market_prices.etl_tge._fetch_html", return_value=html),
+            patch(
+                "energy_dash.features.market_prices.etl_tge.SessionLocal",
+                return_value=fake_session,
+            ),
+            patch("energy_dash.features.market_prices.etl_tge.time.sleep"),
         ):
             failed = fetch_and_save_tge(start_date="2026-10-20", end_date="2026-10-20")
             assert failed == []
@@ -196,8 +215,6 @@ class TestPseApi:
     """Testy pobierania danych RCE, CEN, OZE Actuals oraz OZE Forecasts z PSE."""
 
     def test_fetch_kse_demand_hourly_aggregates_only_complete_hours(self):
-        # 4 kwadranse dla godziny 00:00 UTC (dtime_utc to koniec kwadransa: 00:15..01:00)
-        # i tylko 2 kwadranse dla godziny 01:00 UTC -> powinna wrócić tylko 1 pełna godzina
         payload = {
             "value": [
                 {"dtime_utc": "2026-10-20 00:15:00", "load_fcst": 18000},
@@ -224,9 +241,15 @@ class TestPseApi:
         fake_session.query.return_value.filter.return_value.all.return_value = []
 
         with (
-            patch("src.etl.extract.pse_api.requests.Session", return_value=fake_http),
-            patch("src.etl.extract.pse_api.SessionLocal", return_value=fake_session),
-            patch("src.etl.extract.pse_api.time.sleep"),
+            patch(
+                "energy_dash.features.market_prices.etl_pse.build_retrying_session",
+                return_value=fake_http,
+            ),
+            patch(
+                "energy_dash.features.market_prices.etl_pse.SessionLocal",
+                return_value=fake_session,
+            ),
+            patch("energy_dash.features.market_prices.etl_pse.time.sleep"),
         ):
             fetch_and_save_rce(start_date="2026-10-20", end_date="2026-10-20")
             assert fake_session.add.call_count == 1
@@ -249,9 +272,15 @@ class TestPseApi:
         fake_session.query.return_value.filter.return_value.all.return_value = []
 
         with (
-            patch("src.etl.extract.pse_api.requests.Session", return_value=fake_http),
-            patch("src.etl.extract.pse_api.SessionLocal", return_value=fake_session),
-            patch("src.etl.extract.pse_api.time.sleep"),
+            patch(
+                "energy_dash.features.market_prices.etl_pse.build_retrying_session",
+                return_value=fake_http,
+            ),
+            patch(
+                "energy_dash.features.market_prices.etl_pse.SessionLocal",
+                return_value=fake_session,
+            ),
+            patch("energy_dash.features.market_prices.etl_pse.time.sleep"),
         ):
             fetch_and_save_cen(start_date="2026-10-20", end_date="2026-10-20")
             added = fake_session.add.call_args[0][0]
@@ -277,9 +306,15 @@ class TestPseApi:
         fake_session.query.return_value.filter.return_value.all.return_value = []
 
         with (
-            patch("src.etl.extract.pse_api.requests.Session", return_value=fake_http),
-            patch("src.etl.extract.pse_api.SessionLocal", return_value=fake_session),
-            patch("src.etl.extract.pse_api.time.sleep"),
+            patch(
+                "energy_dash.features.power_system.etl.build_retrying_session",
+                return_value=fake_http,
+            ),
+            patch(
+                "energy_dash.features.power_system.etl.SessionLocal",
+                return_value=fake_session,
+            ),
+            patch("energy_dash.features.power_system.etl.time.sleep"),
         ):
             fetch_and_save_oze_actuals(start_date="2026-10-20", end_date="2026-10-20")
             added = fake_session.add.call_args[0][0]
@@ -305,10 +340,19 @@ class TestPseApi:
         demand_map = {datetime(2026, 10, 20, 12, 0, tzinfo=UTC): 19000.0}
 
         with (
-            patch("src.etl.extract.pse_api.requests.Session", return_value=fake_http),
-            patch("src.etl.extract.pse_api._fetch_kse_demand_hourly", return_value=demand_map),
-            patch("src.etl.extract.pse_api.SessionLocal", return_value=fake_session),
-            patch("src.etl.extract.pse_api.time.sleep"),
+            patch(
+                "energy_dash.features.power_system.etl.build_retrying_session",
+                return_value=fake_http,
+            ),
+            patch(
+                "energy_dash.features.power_system.etl._fetch_kse_demand_hourly",
+                return_value=demand_map,
+            ),
+            patch(
+                "energy_dash.features.power_system.etl.SessionLocal",
+                return_value=fake_session,
+            ),
+            patch("energy_dash.features.power_system.etl.time.sleep"),
         ):
             fetch_and_save_oze(start_date="2026-10-20", end_date="2026-10-20")
             added = fake_session.add.call_args[0][0]
@@ -343,8 +387,8 @@ class TestNewsRssAndDigest:
         fake_session.execute.return_value.fetchall.return_value = [(1,)]
 
         with (
-            patch("src.etl.extract.news_rss.feedparser.parse", return_value=fake_feed),
-            patch("src.etl.extract.news_rss.SessionLocal", return_value=fake_session),
+            patch("energy_dash.features.news.etl_rss.feedparser.parse", return_value=fake_feed),
+            patch("energy_dash.features.news.etl_rss.SessionLocal", return_value=fake_session),
         ):
             fetch_and_save_news(days_back=2)
             assert fake_session.execute.called
@@ -361,15 +405,16 @@ class TestNewsRssAndDigest:
         art = SimpleNamespace(id=1, url="https://news.google.com/xyz", real_url=None, body=None)
         with (
             patch(
-                "src.etl.transform.news_digest.gnewsdecoder",
+                "energy_dash.features.news.digest.gnewsdecoder",
                 return_value={"status": True, "decoded_url": "https://portal.pl/art1"},
             ),
             patch(
-                "src.etl.transform.news_digest.trafilatura.fetch_url",
+                "energy_dash.features.news.digest.trafilatura.fetch_url",
                 return_value="<html>ok</html>",
             ),
             patch(
-                "src.etl.transform.news_digest.trafilatura.extract", return_value="Treść artykułu"
+                "energy_dash.features.news.digest.trafilatura.extract",
+                return_value="Treść artykułu",
             ),
         ):
             ensure_body(fake_session, art)  # type: ignore[arg-type]
@@ -406,10 +451,10 @@ class TestNewsRssAndDigest:
         )
 
         with (
-            patch("src.etl.transform.news_digest.digest_exists", return_value=False),
-            patch("src.etl.transform.news_digest.SessionLocal", return_value=fake_session),
+            patch("energy_dash.features.news.digest.digest_exists", return_value=False),
+            patch("energy_dash.features.news.digest.SessionLocal", return_value=fake_session),
             patch(
-                "src.etl.transform.news_digest.ask_structured",
+                "energy_dash.features.news.digest.ask_structured",
                 side_effect=[sel_resp, dig_resp],
             ),
         ):
@@ -422,23 +467,23 @@ class TestNewsRssAndDigest:
 
 
 class TestRunEtlTasks:
-    """Testy funkcji zadań harmonogramu w src/run_etl.py."""
+    """Testy funkcji zadań harmonogramu w energy_dash.etl.scheduler."""
 
     def test_task_cen_calls_fetch_and_save_cen(self):
-        from src.run_etl import task_cen
+        from energy_dash.etl.scheduler import task_cen
 
-        with patch("src.run_etl.fetch_and_save_cen") as mock_cen:
+        with patch("energy_dash.etl.scheduler.fetch_and_save_cen") as mock_cen:
             task_cen()
             mock_cen.assert_called_once_with(days_back=2)
 
     def test_task_daily_market_data_calls_all_extractors_and_evaluation(self):
-        from src.run_etl import task_daily_market_data
+        from energy_dash.etl.scheduler import task_daily_market_data
 
         with (
-            patch("src.run_etl.fetch_and_save_rce") as m_rce,
-            patch("src.run_etl.fetch_and_save_tge") as m_tge,
-            patch("src.run_etl.fetch_and_save_oze_actuals") as m_oze_act,
-            patch("src.run_etl.task_evaluate_forecasts") as m_eval,
+            patch("energy_dash.etl.scheduler.fetch_and_save_rce") as m_rce,
+            patch("energy_dash.etl.scheduler.fetch_and_save_tge") as m_tge,
+            patch("energy_dash.etl.scheduler.fetch_and_save_oze_actuals") as m_oze_act,
+            patch("energy_dash.etl.scheduler.task_evaluate_forecasts") as m_eval,
         ):
             task_daily_market_data()
             m_rce.assert_called_once_with(days_back=5)
@@ -447,12 +492,12 @@ class TestRunEtlTasks:
             m_eval.assert_called_once_with(days_back=4)
 
     def test_task_news_daily_skips_if_digest_already_exists(self):
-        from src.run_etl import task_news_daily
+        from energy_dash.etl.scheduler import task_news_daily
 
         with (
-            patch("src.run_etl.digest_exists", return_value=True),
-            patch("src.run_etl.fetch_and_save_news") as m_news,
-            patch("src.run_etl.generate_digest") as m_dig,
+            patch("energy_dash.etl.scheduler.digest_exists", return_value=True),
+            patch("energy_dash.etl.scheduler.fetch_and_save_news") as m_news,
+            patch("energy_dash.etl.scheduler.generate_digest") as m_dig,
         ):
             task_news_daily()
             m_news.assert_not_called()
@@ -460,12 +505,18 @@ class TestRunEtlTasks:
 
     def test_task_daily_forecast_has_valid_import(self):
         """Sprawdza, czy task_daily_forecast() potrafi zaimportować run_daily_forecast bez błędu."""
-        with patch("src.ml.fix_I_forecast.predictor.run_daily_forecast") as mock_run:
-            from src.run_etl import task_daily_forecast
+        with patch("energy_dash.features.forecasting.predictor.run_daily_forecast") as mock_run:
+            from energy_dash.etl.scheduler import task_daily_forecast
 
             task_daily_forecast()
-            assert mock_run.called, (
-                "task_daily_forecast() nie wywołało run_daily_forecast()! "
-                "Prawdopodobnie w src/run_etl.py:30 jest 'from ml.fix_I_forecast.predictor...' "
-                "zamiast 'from src.ml.fix_I_forecast.predictor...'."
-            )
+            assert mock_run.called
+
+    def test_build_scheduler_registers_core_jobs(self):
+        """Sprawdza, czy build_scheduler() poprawnie rejestruje zadania cykliczne."""
+        from energy_dash.etl.scheduler import build_scheduler
+
+        sched = build_scheduler()
+        job_ids = {job.id for job in sched.get_jobs()}
+        assert {"cen_peak", "daily_forecast", "cen_offpeak", "daily_rce_tge", "news_daily"}.issubset(
+            job_ids
+        )
