@@ -26,7 +26,9 @@ SELECT f.datetime_utc,
        lag.fixing_1_pln_mwh AS b0
 FROM da_price_forecasts f
 LEFT JOIN hourly_energy e   ON e.datetime_utc = f.datetime_utc
-LEFT JOIN hourly_energy lag ON lag.datetime_utc = f.datetime_utc - INTERVAL '24 hours'
+LEFT JOIN hourly_energy lag 
+    ON (lag.datetime_utc AT TIME ZONE 'Europe/Warsaw')::date = (f.datetime_utc AT TIME ZONE 'Europe/Warsaw')::date - 1
+   AND EXTRACT(HOUR FROM lag.datetime_utc AT TIME ZONE 'Europe/Warsaw') = EXTRACT(HOUR FROM f.datetime_utc AT TIME ZONE 'Europe/Warsaw')
 WHERE f.datetime_utc >= :start
 ORDER BY f.datetime_utc;
 """)

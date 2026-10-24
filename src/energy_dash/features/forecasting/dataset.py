@@ -50,7 +50,6 @@ def transform_data_for_model(
         df, start_train_date, end_train_date, start_predict_date, end_predict_date
     )
     train_set = train_set.dropna(subset=[*ALL_COLUMNS, TARGET])
-    target_set = target_set.dropna(subset=ALL_COLUMNS)
     y_train = train_set[TARGET]
 
     return target_set, train_set, y_train
