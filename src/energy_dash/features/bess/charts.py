@@ -4,6 +4,8 @@ import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
+from energy_dash.core.timeutils import format_time_labels, reindex_to_regular_grid
+
 
 def plot_strategy_schedule(
     df: pd.DataFrame,
@@ -21,6 +23,14 @@ def plot_strategy_schedule(
     title_prefix = f"{strategy_name} - " if strategy_name else ""
     schedule_title = f"{title_prefix}Przychód ({basis_label}): {revenue:,.2f} PLN"
 
+    full_idx = prices_df.index.union(df.index).sort_values()
+    dummy_df = pd.DataFrame(index=full_idx)
+    grid_idx = reindex_to_regular_grid(dummy_df, freq="1h").index
+
+    prices_reindexed = prices_df.reindex(grid_idx)
+    sched_reindexed = df.reindex(grid_idx)
+    category_array = format_time_labels(grid_idx)
+
     # Tworzymy 2 wiersze: góra (ceny), dół (moc + SoC na prawej osi Y)
     fig = make_subplots(
         rows=2,
@@ -36,11 +46,11 @@ def plot_strategy_schedule(
     )
 
     # --- Wiersz 1: Cena ---
-    if "price_real" in prices_df.columns and not prices_df["price_real"].isna().all():
+    if "price_real" in prices_reindexed.columns and not prices_reindexed["price_real"].isna().all():
         fig.add_trace(
             go.Scatter(
-                x=prices_df.index,
-                y=prices_df["price_real"],
+                x=category_array,
+                y=prices_reindexed["price_real"],
                 mode="lines+markers",
                 name="Cena rzeczywista (Fixing I)",
                 line=dict(color="#1f77b4", width=2),
@@ -49,11 +59,11 @@ def plot_strategy_schedule(
             col=1,
         )
 
-    if "price_forecast" in prices_df.columns:
+    if "price_forecast" in prices_reindexed.columns:
         fig.add_trace(
             go.Scatter(
-                x=prices_df.index,
-                y=prices_df["price_forecast"],
+                x=category_array,
+                y=prices_reindexed["price_forecast"],
                 mode="lines+markers",
                 name="Prognoza ceny",
                 line=dict(color="#ff7f0e", width=2, dash="dot"),
@@ -65,8 +75,8 @@ def plot_strategy_schedule(
     # --- Wiersz 2: Rozładowanie (w górę, czerwone) ---
     fig.add_trace(
         go.Bar(
-            x=df.index,
-            y=df["discharge_mw"].round(2),
+            x=category_array,
+            y=sched_reindexed["discharge_mw"].round(2),
             name="Rozładowanie",
             marker_color="#d62728",
         ),
@@ -78,8 +88,8 @@ def plot_strategy_schedule(
     # --- Wiersz 2: Ładowanie (w dół, zielone) ---
     fig.add_trace(
         go.Bar(
-            x=df.index,
-            y=-df["charge_mw"].round(2),
+            x=category_array,
+            y=-sched_reindexed["charge_mw"].round(2),
             name="Ładowanie",
             marker_color="#2ca02c",
         ),
@@ -91,8 +101,8 @@ def plot_strategy_schedule(
     # --- Wiersz 2 (prawa oś Y): Stan naładowania (SoC) ---
     fig.add_trace(
         go.Scatter(
-            x=df.index,
-            y=df["soc_mwh"].round(2),
+            x=category_array,
+            y=sched_reindexed["soc_mwh"].round(2),
             mode="lines",
             name="SoC [MWh]",
             line=dict(color="gray", width=2, dash="dash"),
@@ -117,6 +127,11 @@ def plot_strategy_schedule(
         margin=dict(l=40, r=40, t=60, b=40),
     )
 
+    fig.update_xaxes(
+        type="category",
+        categoryorder="array",
+        categoryarray=category_array,
+    )
     fig.update_yaxes(title_text="PLN / MWh", row=1, col=1)
     fig.update_yaxes(title_text="Moc [MW]", row=2, col=1, secondary_y=False)
     fig.update_yaxes(

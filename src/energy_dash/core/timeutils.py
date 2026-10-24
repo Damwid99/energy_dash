@@ -53,3 +53,49 @@ def to_local_tz(dt_or_df: datetime | pd.DataFrame | pd.Series, tz: ZoneInfo = WA
         return data
 
     raise TypeError(f"Nieobsługiwany typ: {type(dt_or_df)}")
+
+
+def format_time_labels(dt_index: pd.Index | pd.Series | list) -> list[str]:
+    """
+    Generuje unikalne, chronoligczne erykiety czasu
+    """
+    if len(dt_index) == 0:
+        return []
+
+    idx = pd.DatetimeIndex(dt_index)
+    if idx.tz is None:
+        idx = idx.tz_localize(WARSAW)
+    else:
+        idx = idx.tz_convert(WARSAW)
+
+    multiple_days = len(idx.normalize().unique()) > 1
+    fmt = "%Y-%m-%d %H:%M" if multiple_days else "%H:%M"
+    labels: list[str] = []
+    seen: set[str] = set()
+
+    for ts in idx:
+        lbl = ts.strftime(fmt)
+        if lbl in seen:
+            labels.append(f"{lbl}a")
+        else:
+            seen.add(lbl)
+            labels.append(lbl)
+    return labels
+
+
+def reindex_to_regular_grid(
+    df: pd.DataFrame,
+    freq: str = "1h",
+) -> pd.DataFrame:
+    """
+    Dopenia ewentualne luki w danych siatką regularn (NaN)
+    """
+
+    if df.empty or not isinstance(df.index, pd.DatetimeIndex):
+        return df
+
+    idx = df.index
+    tz = idx.tz or WARSAW
+    idx_utc = idx.tz_convert("UTC") if idx.tz else idx.tz_localize("UTC")
+    full_grid_utc = pd.date_range(start=idx_utc.min(), end=idx_utc.max(), freq=freq)
+    return df.reindex(full_grid_utc.tz_convert(tz))

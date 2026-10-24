@@ -1,6 +1,11 @@
+from typing import Any
+
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
+
+from energy_dash.core.settings import get_settings
+from energy_dash.core.timeutils import format_time_labels, reindex_to_regular_grid
 
 # Definicja przedziałów: (dolny_kwantyl, górny_kwantyl, kolor_wypełnienia, nazwa_w_legendzie)
 CONFIDENCE_INTERVALS = [
@@ -32,12 +37,45 @@ def _build_price_indices_chart(df: pd.DataFrame, interval_minutes: int, title: s
     Wykorzystuje czysto wektorowe przekształcenia oraz bezpieczną obsługę brakujących wartości.
     """
     fig = go.Figure()
-    x_axis = _get_x_axis(df)
+
+    freq_str = f"{interval_minutes}min" if interval_minutes < 60 else "1h"
+    raw_x = _get_x_axis(df)
+    if isinstance(raw_x, pd.DatetimeIndex) or (
+        isinstance(raw_x, pd.Series) and pd.api.types.is_datetime64_any_dtype(raw_x)
+    ):
+        if not isinstance(df.index, pd.DatetimeIndex):
+            df = df.set_index(raw_x)
+        df = reindex_to_regular_grid(df, freq=freq_str)
+        raw_x = df.index
+
+    idx = pd.DatetimeIndex(raw_x)
+    tz = get_settings().tz
+    idx = idx.tz_localize(tz) if idx.tz is None else idx.tz_convert(tz)
+    x_axis = format_time_labels(idx)
+
+    unique_days = idx.normalize().unique()
+    n_days = len(unique_days)
+    is_multi_day = n_days > 1
+
+    tick_indices: list[int] = []
+    if not is_multi_day:
+        if interval_minutes < 60:
+            tick_indices = [i for i, ts in enumerate(idx) if ts.minute == 0]
+        else:
+            tick_indices = list(range(len(idx)))
+    else:
+        if n_days <= 3:
+            tick_indices = [i for i, ts in enumerate(idx) if ts.minute == 0 and ts.hour % 6 == 0]
+        elif n_days <= 7:
+            tick_indices = [i for i, ts in enumerate(idx) if ts.minute == 0 and ts.hour % 12 == 0]
+        else:
+            tick_indices = [i for i, ts in enumerate(idx) if ts.minute == 0 and ts.hour == 0]
+
+    tickvals = [x_axis[i] for i in tick_indices]
+    ticktext = [x_axis[i] for i in tick_indices]
 
     status = df["kse_contracting_status"].fillna(0)
     y_bar = np.where(status != 0, 1, np.nan)
-
-    bar_width_ms = interval_minutes * 60 * 1000
 
     # --- 1. SERIA SŁUPKOWA (TŁO) ---
     fig.add_trace(
@@ -47,7 +85,6 @@ def _build_price_indices_chart(df: pd.DataFrame, interval_minutes: int, title: s
             yaxis="y2",
             marker_color=get_background_colors(df["kse_contracting_status"]),
             marker_line_width=0,
-            width=bar_width_ms,
             name="Stan zakontraktowania",
             hoverinfo="skip",
             showlegend=False,
@@ -123,9 +160,21 @@ def _build_price_indices_chart(df: pd.DataFrame, interval_minutes: int, title: s
         )
     )
 
+    xaxis_config: dict[str, Any] = dict(
+        title="Czas",
+        type="category",
+        categoryorder="array",
+        categoryarray=x_axis,
+        tickmode="array",
+        tickvals=tickvals,
+        ticktext=ticktext,
+    )
+    if is_multi_day:
+        xaxis_config["tickangle"] = -45
+
     fig.update_layout(
         title=title,
-        xaxis=dict(title="Czas", type="date"),
+        xaxis=xaxis_config,
         yaxis=dict(title="Cena [PLN/MWh]", domain=[0, 1]),
         yaxis2=dict(
             overlaying="y",

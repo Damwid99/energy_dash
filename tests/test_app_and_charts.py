@@ -311,3 +311,104 @@ class TestFeatureQueries:
 
             dates = get_dates_of_summaries()
             assert dates == [date(2026, 10, 20)]
+
+    def test_charts_dst_transition_25h_autumn(self):
+        """Weryfikuje unikalność etykiet i brak schodków pionowych na wykresach w dobie 25h."""
+        idx_25h = pd.date_range("2026-10-24 22:00", periods=25, freq="1h", tz="UTC").tz_convert(
+            "Europe/Warsaw"
+        )
+        df_1h = pd.DataFrame(
+            {
+                "fixing_1_pln_mwh": [380.0] * 25,
+                "fixing_2_pln_mwh": [370.0] * 25,
+                "cen_pln_mwh": [350.0] * 25,
+                "fixing_1_forecast_pln_mwh": [400.0] * 25,
+                "kse_contracting_status": [0.0] * 25,
+            },
+            index=idx_25h,
+        )
+        fig_1h = plot_price_indices_contracting_status_1h(df_1h)
+        x_cats = fig_1h.data[0].x
+        assert len(x_cats) == 25
+        assert len(set(x_cats)) == 25, "Wszystkie kategorie X muszą być unikalne!"
+        assert x_cats[2] == "02:00"
+        assert x_cats[3] == "02:00a"
+        assert x_cats[4] == "03:00"
+
+    def test_charts_dst_transition_23h_spring(self):
+        """Weryfikuje poprawność wykresów w dobie wiosennej (23h) z pominięciem godziny 02:00."""
+        idx_23h = pd.date_range("2026-03-28 23:00", periods=23, freq="1h", tz="UTC").tz_convert(
+            "Europe/Warsaw"
+        )
+        df_1h = pd.DataFrame(
+            {
+                "fixing_1_pln_mwh": [380.0] * 23,
+                "fixing_2_pln_mwh": [370.0] * 23,
+                "cen_pln_mwh": [350.0] * 23,
+                "fixing_1_forecast_pln_mwh": [400.0] * 23,
+                "kse_contracting_status": [0.0] * 23,
+            },
+            index=idx_23h,
+        )
+        fig_1h = plot_price_indices_contracting_status_1h(df_1h)
+        x_cats = fig_1h.data[0].x
+        assert len(x_cats) == 23
+        assert len(set(x_cats)) == 23
+        assert x_cats[1] == "01:00"
+        assert x_cats[2] == "03:00"
+        assert "02:00" not in x_cats
+
+    def test_charts_gaps_in_data_do_not_shrink_axis(self):
+        """Weryfikuje, że brakujące godziny w danych nie ściskają osi kategorii, lecz tworzą luki (NaN)."""
+        idx = pd.date_range("2026-10-20 00:00", periods=6, freq="1h", tz="Europe/Warsaw")
+        # Pomijamy godziny 02:00 i 03:00
+        df_gap = pd.DataFrame(
+            {
+                "fixing_1_pln_mwh": [100.0, 110.0, 140.0, 150.0],
+                "fixing_2_pln_mwh": [100.0, 110.0, 140.0, 150.0],
+                "cen_pln_mwh": [100.0, 110.0, 140.0, 150.0],
+                "kse_contracting_status": [0.0, 0.0, 0.0, 0.0],
+            },
+            index=idx.delete([2, 3]),
+        )
+        fig = plot_price_indices_contracting_status_1h(df_gap)
+        x_cats = fig.data[0].x
+        assert len(x_cats) == 6, (
+            "Oś musi zachować wszystkie 6 godzin pomimo braku 2 godzin w danych"
+        )
+        assert x_cats[2] == "02:00"
+        assert x_cats[3] == "03:00"
+
+    def test_bess_chart_aligns_mismatched_index_ranges(self):
+        """Weryfikuje, że w BESS podwykresy cen i harmonogramu są spięte wspólną osią kategorii."""
+        idx = pd.date_range("2026-10-20 00:00", periods=5, freq="1h", tz="Europe/Warsaw")
+        # Ceny mają tylko 3 godziny, a harmonogram ma 5 godzin
+        prices_df = pd.DataFrame(
+            {"price_real": [200.0, 210.0, 220.0], "price_forecast": [205.0, 215.0, 225.0]},
+            index=idx[:3],
+        )
+        sched_df = pd.DataFrame(
+            {"charge_mw": [0.0] * 5, "discharge_mw": [0.0] * 5, "soc_mwh": [10.0] * 5},
+            index=idx,
+        )
+        fig = plot_strategy_schedule(sched_df, prices_df, 100.0, "real")
+        assert fig.layout.xaxis.categoryorder == "array"
+        assert len(fig.layout.xaxis.categoryarray) == 5
+        assert len(fig.data[0].x) == 5
+
+    def test_multiday_chart_tickangle_and_ticks(self):
+        """Weryfikuje, że dla wykresu 3-dniowego włączane jest pochylenie etykiet i rzadsze znaczniki."""
+        idx = pd.date_range("2026-10-20 00:00", periods=72, freq="1h", tz="Europe/Warsaw")
+        df_3d = pd.DataFrame(
+            {
+                "fixing_1_pln_mwh": [300.0] * 72,
+                "fixing_2_pln_mwh": [300.0] * 72,
+                "cen_pln_mwh": [300.0] * 72,
+                "kse_contracting_status": [0.0] * 72,
+            },
+            index=idx,
+        )
+        fig = plot_price_indices_contracting_status_1h(df_3d)
+        assert fig.layout.xaxis.tickangle == -45
+        # Znaczniki co 6 godzin dla 3 dni (72h) -> 12 znaczników
+        assert len(fig.layout.xaxis.tickvals) == 12
