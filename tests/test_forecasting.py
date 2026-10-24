@@ -310,3 +310,62 @@ def test_transform_data_for_model_dst_transition():
 
     assert len(target_set) == 25
     assert not target_set[ALL_COLUMNS].isna().any().any()
+
+
+def test_transform_data_for_model_dst_spring_23h():
+    """Weryfikuje poprawność generowania target_set dla doby wiosennej 23-godzinnej (zmiana na czas letni)."""
+    today_spring = pd.Timestamp("2026-03-28 09:00:00", tz="Europe/Warsaw")
+    s_train, e_train, s_pred, e_pred = get_start_end_date(window_size=30, today=today_spring)
+
+    assert int((e_pred - s_pred) / pd.Timedelta(hours=1)) == 23
+
+    idx = pd.date_range(s_train, e_pred, freq="h", tz="UTC", inclusive="left")
+    raw_df = pd.DataFrame(
+        {
+            "datetime_utc": idx,
+            TARGET: np.linspace(250.0, 550.0, len(idx)),
+            DEMAND: np.full(len(idx), 19000.0),
+            PV: np.full(len(idx), 1500.0),
+            WIND: np.full(len(idx), 2500.0),
+            EXCHANGE: np.full(len(idx), 200.0),
+        }
+    )
+    raw_df.loc[raw_df["datetime_utc"] >= s_pred, TARGET] = np.nan
+
+    target_set, train_set, y_train = transform_data_for_model(
+        raw_df, s_train, e_train, s_pred, e_pred
+    )
+
+    assert len(target_set) == 23
+    assert not target_set[ALL_COLUMNS].isna().any().any()
+
+
+def test_transform_data_for_model_day_after_spring_dst():
+    """
+    Weryfikuje generowanie cech w poniedziałek po wiośnie (24h),
+    gdy w dobie D-1 (niedziela) brakowało godziny 02:00.
+    """
+    today_post_spring = pd.Timestamp("2026-03-29 09:00:00", tz="Europe/Warsaw")
+    s_train, e_train, s_pred, e_pred = get_start_end_date(window_size=30, today=today_post_spring)
+
+    assert int((e_pred - s_pred) / pd.Timedelta(hours=1)) == 24
+
+    idx = pd.date_range(s_train, e_pred, freq="h", tz="UTC", inclusive="left")
+    raw_df = pd.DataFrame(
+        {
+            "datetime_utc": idx,
+            TARGET: np.linspace(250.0, 550.0, len(idx)),
+            DEMAND: np.full(len(idx), 19000.0),
+            PV: np.full(len(idx), 1500.0),
+            WIND: np.full(len(idx), 2500.0),
+            EXCHANGE: np.full(len(idx), 200.0),
+        }
+    )
+    raw_df.loc[raw_df["datetime_utc"] >= s_pred, TARGET] = np.nan
+
+    target_set, train_set, y_train = transform_data_for_model(
+        raw_df, s_train, e_train, s_pred, e_pred
+    )
+
+    assert len(target_set) == 24
+    assert not target_set[ALL_COLUMNS].isna().any().any()

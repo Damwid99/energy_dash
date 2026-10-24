@@ -73,17 +73,17 @@ def render():
     """
     render_page_caution("UWAGA", text)
 
-    now = pd.Timestamp.now(tz=get_settings().tz).floor("D")
+    now = pd.Timestamp.now(tz=get_settings().tz).normalize()
 
-    start_local = now - pd.Timedelta(days=2)
-    end_local = now + pd.Timedelta(days=2)
+    start_local = now - pd.DateOffset(days=2)
+    end_local = now + pd.DateOffset(days=2)
 
     start_dt_utc = start_local.tz_convert("UTC")
     end_dt_utc = end_local.tz_convert("UTC")
 
     string_today = str(now.date())
-    string_yesterday = str((now - pd.Timedelta(days=1)).date())
-    string_tommorow = str((now + pd.Timedelta(days=1)).date())
+    string_yesterday = str((now - pd.DateOffset(days=1)).date())
+    string_tommorow = str((now + pd.DateOffset(days=1)).date())
 
     strategies_info = {
         BessStrategy.FORECAST_BASED: (
