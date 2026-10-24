@@ -278,3 +278,35 @@ def test_evaluate_forecasts_workflow(monkeypatch):
     assert n_evaluated == 1
     mock_client.set_tag.assert_called_once_with("run-ready", "evaluated", "true")
     assert mock_client.log_metric.call_count >= 6
+
+
+# ---------------------------------------------------------------------------
+# 3. Test zmiany czasu na letni/zimowy
+# ---------------------------------------------------------------------------
+
+
+def test_transform_data_for_model_dst_transition():
+    """Weryfikuje poprawność generowania target_set dla doby 25-godzinnej (zmiana czasu)."""
+    today_dst = pd.Timestamp("2026-10-24 09:00:00", tz="Europe/Warsaw")
+    s_train, e_train, s_pred, e_pred = get_start_end_date(window_size=30, today=today_dst)
+
+    # Generujemy pełny ciąg godzin od s_train do e_pred (25 godzin dla doby predykcji)
+    idx = pd.date_range(s_train, e_pred, freq="h", tz="UTC", inclusive="left")
+    raw_df = pd.DataFrame(
+        {
+            "datetime_utc": idx,
+            TARGET: np.linspace(250.0, 550.0, len(idx)),
+            DEMAND: np.full(len(idx), 19000.0),
+            PV: np.full(len(idx), 1500.0),
+            WIND: np.full(len(idx), 2500.0),
+            EXCHANGE: np.full(len(idx), 200.0),
+        }
+    )
+    raw_df.loc[raw_df["datetime_utc"] >= s_pred, TARGET] = np.nan
+
+    target_set, train_set, y_train = transform_data_for_model(
+        raw_df, s_train, e_train, s_pred, e_pred
+    )
+
+    assert len(target_set) == 25
+    assert not target_set[ALL_COLUMNS].isna().any().any()

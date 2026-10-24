@@ -78,9 +78,8 @@ def add_time_features(df: pd.DataFrame) -> pd.DataFrame:
 
 def add_price_lags(df: pd.DataFrame, price: pd.Series) -> pd.DataFrame:
     data = df.copy()
-    data["price_lag_24"] = price.reindex(data.index - pd.Timedelta(hours=24)).to_numpy()
-    data["price_lag_168"] = price.reindex(data.index - pd.Timedelta(hours=168)).to_numpy()
-
+    data["price_lag_24"] = _compute_price_lag_by_clock_hour(price, days_back=1).to_numpy()
+    data["price_lag_168"] = _compute_price_lag_by_clock_hour(price, days_back=7).to_numpy()
     dow = np.asarray(to_local_tz(data).index.dayofweek)
     use_week = np.isin(dow, [0, 5, 6])
     data["price_lag_typeday"] = np.where(use_week, data["price_lag_168"], data["price_lag_24"])
@@ -118,3 +117,36 @@ def make_training_frame(df: pd.DataFrame, dropna: bool = False) -> pd.DataFrame:
     if dropna:
         data = data.dropna(subset=[*ALL_COLUMNS, TARGET])
     return data
+
+
+def _compute_price_lag_by_clock_hour(price_series: pd.Series, days_back: int) -> pd.Series:
+    """
+    Wyznacza opóźnienie cenowe o N dni wstecz według lokalnej godziny zegarowej
+
+    Obsługuje zmiany czasu:
+    - 25h: obie godziny 02:00 (CEST i CET) biorą cenę z 02:00 dnia poprzedniego a 25 godzina (23:00) bierze cenę z 23:00 dnia poprzednieto
+    - Dzień po 25h: uśrednia ceny dla zduplikowanej godziny 02:00
+    - Dzień po 23h: interpoluje brakującą godzinę 02:00
+    """
+    local_idx = to_local_tz(price_series).index
+
+    df_price = pd.DataFrame(
+        {"price": price_series.values, "date": local_idx.date, "hour": local_idx.hour},
+        index=price_series.index,
+    )
+
+    price_by_date_hour = df_price.dropna(subset=["price"]).groupby(["date", "hour"])["price"].mean()
+
+    target_dates = [d - pd.Timedelta(days=days_back) for d in local_idx.date]
+
+    target_hours = local_idx.hour
+
+    target_keys = list(zip(target_dates, target_hours, strict=False))
+
+    lag_values = price_by_date_hour.reindex(target_keys).values
+    lag_series = pd.Series(lag_values, index=price_series.index, dtype="float64")
+
+    if lag_series.isna().any():
+        lag_series = lag_series.interpolate(method="linear", limit=2)
+
+    return lag_series

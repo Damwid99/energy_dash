@@ -2,7 +2,7 @@ import pandas as pd
 
 from energy_dash.core.settings import get_settings
 from energy_dash.core.timeutils import to_local_tz
-from energy_dash.features.forecasting.features import ALL_COLUMNS, TARGET, make_training_frame
+from energy_dash.features.forecasting.features import TARGET, make_training_frame
 
 
 def get_start_end_date(window_size: int = 365, today: pd.Timestamp | None = None):
@@ -49,8 +49,6 @@ def transform_data_for_model(
     target_set, train_set = create_train_target_set(
         df, start_train_date, end_train_date, start_predict_date, end_predict_date
     )
-    train_set = train_set.dropna(subset=[*ALL_COLUMNS, TARGET])
-    target_set = target_set.dropna(subset=ALL_COLUMNS)
     y_train = train_set[TARGET]
 
     return target_set, train_set, y_train
