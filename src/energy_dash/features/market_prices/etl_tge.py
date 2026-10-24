@@ -88,7 +88,7 @@ def parse_tge_day(html: bytes, delivery_date: date) -> list[dict]:
         raise ValueError("Nie znaleziono tbody w tabeli")
     for tr in tbody.find_all("tr"):
         cells = [" ".join(td.get_text().split()) for td in tr.find_all("td")]
-        m = re.match(r"^(\d{4}-\d{2}-\d{2})_Q\d{2}:\d{2}", cells[0]) if cells else None
+        m = re.match(r"^(\d{4}-\d{2}-\d{2})_Q\d{2}a?:\d{2}", cells[0]) if cells else None
         if not m:
             continue
         if m.group(1) != delivery_date.isoformat():

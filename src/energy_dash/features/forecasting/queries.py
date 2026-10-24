@@ -16,7 +16,6 @@ def get_energy_prices_and_forecasts(
         WITH expanded AS (
             SELECT 
                 f.datetime_utc + (n.minute || ' minutes')::interval AS datetime_utc,
-                (f.datetime_utc + (n.minute || ' minutes')::interval) AT TIME ZONE 'Europe/Warsaw' AS datetime_local,
                 f.model_version,
                 f.forecast_pln_mwh AS fixing_1_forecast_pln_mwh,
                 f.p05,
@@ -39,6 +38,7 @@ def get_energy_prices_and_forecasts(
         SELECT *
         FROM expanded
         WHERE datetime_utc >= :start_dt AND datetime_utc <= :end_dt
+        ORDER BY datetime_utc ASC
     """)
 
     df = pd.read_sql(query, con=engine, params={"start_dt": start_dt_utc, "end_dt": end_dt_utc})
@@ -46,11 +46,8 @@ def get_energy_prices_and_forecasts(
     if df.empty:
         return df
 
-    df["datetime_local"] = pd.to_datetime(df["datetime_local"])
-    if df["datetime_local"].dt.tz is None:
-        df["datetime_local"] = df["datetime_local"].dt.tz_localize("Europe/Warsaw")
-    else:
-        df["datetime_local"] = df["datetime_local"].dt.tz_convert("Europe/Warsaw")
+    df["datetime_utc"] = pd.to_datetime(df["datetime_utc"], utc=True)
+    df["datetime_local"] = df["datetime_utc"].dt.tz_convert("Europe/Warsaw")
 
     df.set_index("datetime_local", inplace=True)
     df.drop(columns=["datetime_utc"], inplace=True)

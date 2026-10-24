@@ -28,10 +28,11 @@ def render():
     """
     render_page_caution("UWAGA", text)
 
-    now = pd.Timestamp.now(tz=get_settings().tz).floor("D")
+    now = pd.Timestamp.now(tz=get_settings().tz).normalize()
 
-    start_local = now - pd.Timedelta(days=1)
-    end_local = now + pd.Timedelta(days=2)
+    start_local = now - pd.DateOffset(days=1)
+    tomorrow_local = now + pd.DateOffset(days=1)
+    end_local = now + pd.DateOffset(days=2)
 
     start_dt_utc = start_local.tz_convert("UTC")
     end_dt_utc = end_local.tz_convert("UTC")
@@ -39,11 +40,11 @@ def render():
     df = _cached_energy_prices_and_forecasts(start_dt_utc=start_dt_utc, end_dt_utc=end_dt_utc)
     yesterday_df = df.loc[df.index.date == start_local.date()].copy()
     today_df = df.loc[df.index.date == now.date()].copy()
-    tommorow_df = df.loc[df.index.date == (now + pd.Timedelta(days=1)).date()].copy()
+    tommorow_df = df.loc[df.index.date == tomorrow_local.date()].copy()
 
     string_today = str(now.date())
     string_yesterday = str(start_local.date())
-    string_tommorow = str(end_dt_utc.date())
+    string_tommorow = str(tomorrow_local.date())
 
     yesterday_df_1h = yesterday_df.resample("1h").agg(
         {
