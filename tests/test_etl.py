@@ -210,6 +210,137 @@ class TestTgeApi:
             assert failed == []
             assert fake_session.commit.call_count == 1
 
+    def test_parse_tge_day_dst_25h_with_a_labels(self):
+        """Weryfikuje parsowanie doby jesiennej (25h = 100 kwadransów) z etykietami Q01a/Q02a."""
+        d = date(2026, 10, 25)
+        rows_html = []
+        # Godziny H01, H02 (kwadranse standardowe)
+        for h in [0, 1]:
+            for q in [15, 30, 45]:
+                rows_html.append(
+                    f"<tr><td>{d.isoformat()}_Q{h:02d}:{q:02d}</td><td>RDN</td><td>400,0</td><td>100,0</td>"
+                    + "<td></td>" * 3
+                    + "<td>410,0</td><td>100,0</td>"
+                    + "<td></td>" * 9
+                    + "</tr>"
+                )
+            rows_html.append(
+                f"<tr><td>{d.isoformat()}_Q{h + 1:02d}:00</td><td>RDN</td><td>400,0</td><td>100,0</td>"
+                + "<td></td>" * 3
+                + "<td>410,0</td><td>100,0</td>"
+                + "<td></td>" * 9
+                + "</tr>"
+            )
+        # Godzina H02a (dodatkowa godzina ze zmianą czasu: Q01a:15..Q02a:00)
+        for q in [15, 30, 45]:
+            rows_html.append(
+                f"<tr><td>{d.isoformat()}_Q01a:{q:02d}</td><td>RDN</td><td>400,0</td><td>100,0</td>"
+                + "<td></td>" * 3
+                + "<td>410,0</td><td>100,0</td>"
+                + "<td></td>" * 9
+                + "</tr>"
+            )
+        rows_html.append(
+            f"<tr><td>{d.isoformat()}_Q02a:00</td><td>RDN</td><td>400,0</td><td>100,0</td>"
+            + "<td></td>" * 3
+            + "<td>410,0</td><td>100,0</td>"
+            + "<td></td>" * 9
+            + "</tr>"
+        )
+        # Pozostałe godziny H03..H24 (88 kwadransów)
+        for h in range(2, 24):
+            for q in [15, 30, 45]:
+                rows_html.append(
+                    f"<tr><td>{d.isoformat()}_Q{h:02d}:{q:02d}</td><td>RDN</td><td>400,0</td><td>100,0</td>"
+                    + "<td></td>" * 3
+                    + "<td>410,0</td><td>100,0</td>"
+                    + "<td></td>" * 9
+                    + "</tr>"
+                )
+            rows_html.append(
+                f"<tr><td>{d.isoformat()}_Q{h + 1:02d}:00</td><td>RDN</td><td>400,0</td><td>100,0</td>"
+                + "<td></td>" * 3
+                + "<td>410,0</td><td>100,0</td>"
+                + "<td></td>" * 9
+                + "</tr>"
+            )
+
+        headers = [
+            "Czas",
+            "Instrument",
+            "Kurs [PLN/MWh]",
+            "Wolumen [MW]",
+            "Col4",
+            "Col5",
+            "Col6",
+            "Kurs jednolity [PLN/MWh]",
+            "Wolumen [MW]",
+            "Col9",
+            "Col10",
+            "Col11",
+            "Col12",
+            "Col13",
+            "Col14",
+            "Col15",
+            "Col16",
+        ]
+        ths = "".join(f"<th>{h}</th>" for h in headers)
+        html = f"<html><body><table id='rdn'><thead><tr><th colspan='17'>Nagłówek</th></tr><tr>{ths}</tr></thead><tbody>{''.join(rows_html)}</tbody></table></body></html>".encode()
+
+        rows = parse_tge_day(html, d)
+        assert len(rows) == 100
+        assert rows[0]["datetime_utc"] == datetime(2026, 10, 24, 22, 0, tzinfo=UTC)
+        assert rows[-1]["datetime_utc"] == datetime(2026, 10, 25, 22, 45, tzinfo=UTC)
+
+    def test_parse_tge_day_dst_23h_spring(self):
+        """Weryfikuje parsowanie doby wiosennej (23h = 92 kwadranse, brak godziny 02:00)."""
+        d = date(2026, 3, 29)
+        rows_html = []
+        # 23 godziny: godziny 00..01, pomijamy 02, godziny 03..23
+        for h in [0, 1] + list(range(3, 24)):
+            for q in [15, 30, 45]:
+                rows_html.append(
+                    f"<tr><td>{d.isoformat()}_Q{h:02d}:{q:02d}</td><td>RDN</td><td>400,0</td><td>100,0</td>"
+                    + "<td></td>" * 3
+                    + "<td>410,0</td><td>100,0</td>"
+                    + "<td></td>" * 9
+                    + "</tr>"
+                )
+            rows_html.append(
+                f"<tr><td>{d.isoformat()}_Q{h + 1:02d}:00</td><td>RDN</td><td>400,0</td><td>100,0</td>"
+                + "<td></td>" * 3
+                + "<td>410,0</td><td>100,0</td>"
+                + "<td></td>" * 9
+                + "</tr>"
+            )
+
+        headers = [
+            "Czas",
+            "Instrument",
+            "Kurs [PLN/MWh]",
+            "Wolumen [MW]",
+            "Col4",
+            "Col5",
+            "Col6",
+            "Kurs jednolity [PLN/MWh]",
+            "Wolumen [MW]",
+            "Col9",
+            "Col10",
+            "Col11",
+            "Col12",
+            "Col13",
+            "Col14",
+            "Col15",
+            "Col16",
+        ]
+        ths = "".join(f"<th>{h}</th>" for h in headers)
+        html = f"<html><body><table id='rdn'><thead><tr><th colspan='17'>Nagłówek</th></tr><tr>{ths}</tr></thead><tbody>{''.join(rows_html)}</tbody></table></body></html>".encode()
+
+        rows = parse_tge_day(html, d)
+        assert len(rows) == 92
+        assert rows[0]["datetime_utc"] == datetime(2026, 3, 28, 23, 0, tzinfo=UTC)
+        assert rows[-1]["datetime_utc"] == datetime(2026, 3, 29, 21, 45, tzinfo=UTC)
+
 
 class TestPseApi:
     """Testy pobierania danych RCE, CEN, OZE Actuals oraz OZE Forecasts z PSE."""
@@ -517,6 +648,10 @@ class TestRunEtlTasks:
 
         sched = build_scheduler()
         job_ids = {job.id for job in sched.get_jobs()}
-        assert {"cen_peak", "daily_forecast", "cen_offpeak", "daily_rce_tge", "news_daily"}.issubset(
-            job_ids
-        )
+        assert {
+            "cen_peak",
+            "daily_forecast",
+            "cen_offpeak",
+            "daily_rce_tge",
+            "news_daily",
+        }.issubset(job_ids)
