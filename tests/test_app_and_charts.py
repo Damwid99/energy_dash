@@ -300,7 +300,7 @@ class TestFeatureQueries:
             (date(2026, 10, 20),)
         ]
 
-        with patch("energy_dash.features.news.queries.SessionLocal", return_value=mock_session):
+        with patch("energy_dash.features.news.queries.session_scope", return_value=mock_session):
             arts_df = get_news_articles(date(2026, 10, 20))
             assert len(arts_df) == 1
             assert arts_df.iloc[0]["url"] == "https://pap.pl/1"
