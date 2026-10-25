@@ -2,7 +2,7 @@ import time
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
-from energy_dash.core.db import SessionLocal
+from energy_dash.core.db import postgres_upsert
 from energy_dash.core.http import build_retrying_session
 from energy_dash.features.market_prices.models import EnergyPrice
 
@@ -27,7 +27,6 @@ def fetch_and_save_rce(
     print(f"Pobieranie RCE z PSE za dostawy: {start} do {end} ({len(days)} dób)...")
 
     http = build_retrying_session()
-    session = SessionLocal()
     total_saved = 0
 
     try:
@@ -61,42 +60,24 @@ def fetch_and_save_rce(
                 if not parsed_rows:
                     continue
 
-                day_from = parsed_rows[0]["datetime_utc"]
-                day_to = parsed_rows[-1]["datetime_utc"]
-
-                existing: dict[Any, EnergyPrice] = {
-                    r.datetime_utc: r
-                    for r in session.query(EnergyPrice)
-                    .filter(
-                        EnergyPrice.datetime_utc >= day_from, EnergyPrice.datetime_utc <= day_to
-                    )
-                    .all()
-                }
-
-                saved = 0
-                for row in parsed_rows:
-                    dt = row["datetime_utc"]
-                    record = existing.get(dt)
-                    if record is None:
-                        session.add(EnergyPrice(datetime_utc=dt, rce_pln_mwh=row["rce_pln_mwh"]))
-                    else:
-                        record.rce_pln_mwh = row["rce_pln_mwh"]
-                    saved += 1
-
-                session.commit()
-                total_saved += saved
+                saved = postgres_upsert(
+                    EnergyPrice,
+                    records=parsed_rows,
+                    index_elements=["datetime_utc"],
+                    update_columns=["rce_pln_mwh"],
+                )
                 print(f"{d_str}: zapisano {saved} kwadransów.")
+                total_saved += saved
 
             except Exception as e:
                 print(f"{d_str}: BŁĄD - {e}")
-                session.rollback()
 
             time.sleep(0.5)
 
+    except Exception as e:
+        print(f"Wystąpił problem z zapisem danych RCE: {e}")
     finally:
-        session.close()
-
-    print(f"Zaktualizowano łącznie {total_saved} punktów RCE w bazie danych.")
+        print(f"Zaktualizowano łącznie {total_saved} punktów RCE w bazie danych.")
 
 
 def fetch_and_save_cen(
@@ -119,7 +100,6 @@ def fetch_and_save_cen(
     print(f"Pobieranie CEN z PSE za dostawy: {start} do {end} ({len(days)} dób)...")
 
     http = build_retrying_session()
-    session = SessionLocal()
     total_saved = 0
 
     try:
@@ -172,48 +152,23 @@ def fetch_and_save_cen(
                 if not parsed_rows:
                     continue
 
-                day_from = parsed_rows[0]["datetime_utc"]
-                day_to = parsed_rows[-1]["datetime_utc"]
+                saved = postgres_upsert(
+                    EnergyPrice,
+                    records=parsed_rows,
+                    index_elements=["datetime_utc"],
+                    update_columns=["cen_pln_mwh", "kse_contracting_status"],
+                )
 
-                existing: dict[Any, EnergyPrice] = {
-                    r.datetime_utc: r
-                    for r in session.query(EnergyPrice)
-                    .filter(
-                        EnergyPrice.datetime_utc >= day_from,
-                        EnergyPrice.datetime_utc <= day_to,
-                    )
-                    .all()
-                }
-
-                saved = 0
-                for row in parsed_rows:
-                    dt = row["datetime_utc"]
-                    record = existing.get(dt)
-
-                    if record is None:
-                        record = EnergyPrice(
-                            datetime_utc=dt,
-                            cen_pln_mwh=row["cen_pln_mwh"],
-                            kse_contracting_status=row["kse_contracting_status"],
-                        )
-                        session.add(record)
-                    else:
-                        record.cen_pln_mwh = row["cen_pln_mwh"]
-                        record.kse_contracting_status = row["kse_contracting_status"]
-
-                    saved += 1
-
-                session.commit()
                 total_saved += saved
+
                 print(f"{d_str}: zapisano {saved} kwadransów.")
 
             except Exception as e:
                 print(f"{d_str}: BŁĄD - {e}")
-                session.rollback()
 
             time.sleep(0.5)
 
+    except Exception as e:
+        print(f"Wystąpił problem z zapisem danych CEN: {e}")
     finally:
-        session.close()
-
-    print(f"Zaktualizowano łącznie {total_saved} punktów CEN w bazie danych.")
+        print(f"Zaktualizowano łącznie {total_saved} punktów CEN w bazie danych.")

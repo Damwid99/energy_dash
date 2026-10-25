@@ -1,11 +1,11 @@
 import time
 from collections import defaultdict
 from datetime import UTC, date, datetime, timedelta
-from typing import Any, cast
+from typing import Any
 
 import requests
 
-from energy_dash.core.db import SessionLocal
+from energy_dash.core.db import postgres_upsert
 from energy_dash.core.http import build_retrying_session
 from energy_dash.features.power_system.models import PseOzeActual, PseOzeForecast
 
@@ -30,7 +30,6 @@ def fetch_and_save_oze_actuals(
     print(f"Pobieranie RZECZYWISTYCH danych OZE/KSE za dostawy: {start} do {end} ({len(days)} dób)")
 
     http = build_retrying_session()
-    session = SessionLocal()
     total_saved = 0
 
     try:
@@ -87,55 +86,27 @@ def fetch_and_save_oze_actuals(
                 if not parsed_rows:
                     continue
 
-                day_from = parsed_rows[0]["datetime_utc"]
-                day_to = parsed_rows[-1]["datetime_utc"]
-
-                existing: dict[Any, PseOzeActual] = {
-                    r.datetime_utc: r
-                    for r in session.query(PseOzeActual)
-                    .filter(
-                        PseOzeActual.datetime_utc >= day_from,
-                        PseOzeActual.datetime_utc <= day_to,
-                    )
-                    .all()
-                }
-
-                saved = 0
-                for row in parsed_rows:
-                    dt = row["datetime_utc"]
-                    record = existing.get(dt)
-
-                    if record is None:
-                        record = PseOzeActual(
-                            datetime_utc=dt,
-                            pv_actual_pse=row["pv_actual_pse"],
-                            wind_actual_pse=row["wind_actual_pse"],
-                            demand_actual_pse=row["demand_actual_pse"],
-                            exchange_actual_pse=row["exchange_actual_pse"],
-                            resload_actual_pse=row["resload_actual_pse"],
-                        )
-                        session.add(record)
-                    else:
-                        record.pv_actual_pse = row["pv_actual_pse"]
-                        record.wind_actual_pse = row["wind_actual_pse"]
-                        record.demand_actual_pse = row["demand_actual_pse"]
-                        record.exchange_actual_pse = row["exchange_actual_pse"]
-                        record.resload_actual_pse = row["resload_actual_pse"]
-
-                    saved += 1
-
-                session.commit()
-                total_saved += saved
+                saved = postgres_upsert(
+                    PseOzeActual,
+                    records=parsed_rows,
+                    index_elements=["datetime_utc"],
+                    update_columns=[
+                        "pv_actual_pse",
+                        "wind_actual_pse",
+                        "demand_actual_pse",
+                        "exchange_actual_pse",
+                        "resload_actual_pse",
+                    ],
+                )
                 print(f"{d_str}: zapisano {saved} punktów RZECZYWISTYCH (OZE/KSE).")
-
+                total_saved += saved
             except Exception as e:
                 print(f"{d_str}: BŁĄD - {e}")
-                session.rollback()
 
             time.sleep(0.5)
-
+    except Exception as e:
+        print(f"Wystąpił problem z zapisem danych OZE actuals: {e}")
     finally:
-        session.close()
         print(f"Zaktualizowano łącznie {total_saved} RZECZYWISTYCH punktów OZE/KSE w bazie danych.")
 
 
@@ -190,7 +161,6 @@ def fetch_and_save_oze(
     print(f"Pobieranie prognoz KSE za dostawy: {start} do {end} ({len(days)} dób)")
 
     http = build_retrying_session()
-    session = SessionLocal()
     total_saved = 0
     total_no_demand = 0
 
@@ -261,58 +231,29 @@ def fetch_and_save_oze(
 
                 if not parsed_rows:
                     continue
-                day_from: datetime = min(
-                    cast(datetime, r["issue_datetime_utc"]) for r in parsed_rows
+                saved = postgres_upsert(
+                    PseOzeForecast,
+                    records=parsed_rows,
+                    index_elements=["issue_datetime_utc"],
+                    update_columns=[
+                        "publication_datetime_utc",
+                        "pv_fcst_pse",
+                        "wind_fcst_pse",
+                        "demand_fcst_pse",
+                        "exchange_fcst_pse",
+                        "resload_fcst_pse",
+                    ],
                 )
-                day_to: datetime = max(cast(datetime, r["issue_datetime_utc"]) for r in parsed_rows)
-
-                existing: dict[Any, PseOzeForecast] = {
-                    r.issue_datetime_utc: r
-                    for r in session.query(PseOzeForecast)
-                    .filter(
-                        cast(Any, PseOzeForecast.issue_datetime_utc >= day_from),
-                        cast(Any, PseOzeForecast.issue_datetime_utc <= day_to),
-                    )
-                    .all()
-                }
-
-                saved = 0
-                for row in parsed_rows:
-                    dt = row["issue_datetime_utc"]
-                    record = existing.get(dt)
-
-                    if record is None:
-                        record = PseOzeForecast(
-                            issue_datetime_utc=dt,
-                            publication_datetime_utc=row["publication_datetime_utc"],
-                            pv_fcst_pse=row["pv_fcst_pse"],
-                            wind_fcst_pse=row["wind_fcst_pse"],
-                            demand_fcst_pse=row["demand_fcst_pse"],
-                            exchange_fcst_pse=row["exchange_fcst_pse"],
-                            resload_fcst_pse=row["resload_fcst_pse"],
-                        )
-                        session.add(record)
-                    else:
-                        if keep_past_fcst and d < today:
-                            continue
-                        record.publication_datetime_utc = row["publication_datetime_utc"]
-                        record.pv_fcst_pse = row["pv_fcst_pse"]
-                        record.wind_fcst_pse = row["wind_fcst_pse"]
-                        record.demand_fcst_pse = row["demand_fcst_pse"]
-                        record.exchange_fcst_pse = row["exchange_fcst_pse"]
-                        record.resload_fcst_pse = row["resload_fcst_pse"]
-                    saved += 1
-                session.commit()
                 total_saved += saved
                 print(f"{d_str}: zapisano {saved} punktów (OZE/KSE).")
             except Exception as e:
                 print(f"{d_str}: BŁĄD - {e}")
-                session.rollback()
 
             time.sleep(0.5)
+    except Exception as e:
+        print(f"Wystąpił problem z zapisem danych OZE forecasts: {e}")
 
     finally:
-        session.close()
         print(
             f"Zaktualizowano łącznie {total_saved} punktów OZE/KSE w bazie danych "
             f"(pominięto {total_no_demand} godz. bez popytu)."

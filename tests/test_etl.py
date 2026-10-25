@@ -368,8 +368,6 @@ class TestPseApi:
         fake_http.get.return_value.json.return_value = {
             "value": [{"dtime_utc": "2026-10-20 00:15:00", "rce_pln": 420.5}]
         }
-        fake_session = MagicMock()
-        fake_session.query.return_value.filter.return_value.all.return_value = []
 
         with (
             patch(
@@ -377,16 +375,17 @@ class TestPseApi:
                 return_value=fake_http,
             ),
             patch(
-                "energy_dash.features.market_prices.etl_pse.SessionLocal",
-                return_value=fake_session,
-            ),
+                "energy_dash.features.market_prices.etl_pse.postgres_upsert",
+                return_value=1,
+            ) as mock_upsert,
             patch("energy_dash.features.market_prices.etl_pse.time.sleep"),
         ):
             fetch_and_save_rce(start_date="2026-10-20", end_date="2026-10-20")
-            assert fake_session.add.call_count == 1
-            added_obj = fake_session.add.call_args[0][0]
-            assert added_obj.datetime_utc == datetime(2026, 10, 20, 0, 0, tzinfo=UTC)
-            assert added_obj.rce_pln_mwh == pytest.approx(420.5)
+            mock_upsert.assert_called_once()
+            records = mock_upsert.call_args.kwargs["records"]
+            assert len(records) == 1
+            assert records[0]["datetime_utc"] == datetime(2026, 10, 20, 0, 0, tzinfo=UTC)
+            assert records[0]["rce_pln_mwh"] == pytest.approx(420.5)
 
     def test_fetch_and_save_cen_parses_cen_cost_and_contracting_status(self):
         fake_http = MagicMock()
@@ -399,8 +398,6 @@ class TestPseApi:
                 }
             ]
         }
-        fake_session = MagicMock()
-        fake_session.query.return_value.filter.return_value.all.return_value = []
 
         with (
             patch(
@@ -408,16 +405,18 @@ class TestPseApi:
                 return_value=fake_http,
             ),
             patch(
-                "energy_dash.features.market_prices.etl_pse.SessionLocal",
-                return_value=fake_session,
-            ),
+                "energy_dash.features.market_prices.etl_pse.postgres_upsert",
+                return_value=1,
+            ) as mock_upsert,
             patch("energy_dash.features.market_prices.etl_pse.time.sleep"),
         ):
             fetch_and_save_cen(start_date="2026-10-20", end_date="2026-10-20")
-            added = fake_session.add.call_args[0][0]
-            assert added.datetime_utc == datetime(2026, 10, 20, 0, 45, tzinfo=UTC)
-            assert added.cen_pln_mwh == pytest.approx(512.0)
-            assert added.kse_contracting_status == pytest.approx(-145.2)
+            mock_upsert.assert_called_once()
+            records = mock_upsert.call_args.kwargs["records"]
+            assert len(records) == 1
+            assert records[0]["datetime_utc"] == datetime(2026, 10, 20, 0, 45, tzinfo=UTC)
+            assert records[0]["cen_pln_mwh"] == pytest.approx(512.0)
+            assert records[0]["kse_contracting_status"] == pytest.approx(-145.2)
 
     def test_fetch_and_save_oze_actuals_computes_exchange_and_resload(self):
         fake_http = MagicMock()
@@ -433,8 +432,6 @@ class TestPseApi:
                 }
             ]
         }
-        fake_session = MagicMock()
-        fake_session.query.return_value.filter.return_value.all.return_value = []
 
         with (
             patch(
@@ -442,16 +439,18 @@ class TestPseApi:
                 return_value=fake_http,
             ),
             patch(
-                "energy_dash.features.power_system.etl.SessionLocal",
-                return_value=fake_session,
-            ),
+                "energy_dash.features.power_system.etl.postgres_upsert",
+                return_value=1,
+            ) as mock_upsert,
             patch("energy_dash.features.power_system.etl.time.sleep"),
         ):
             fetch_and_save_oze_actuals(start_date="2026-10-20", end_date="2026-10-20")
-            added = fake_session.add.call_args[0][0]
-            assert added.datetime_utc == datetime(2026, 10, 20, 12, 0, tzinfo=UTC)
-            assert added.exchange_actual_pse == pytest.approx(400.0)
-            assert added.resload_actual_pse == pytest.approx(15000.0)
+            mock_upsert.assert_called_once()
+            records = mock_upsert.call_args.kwargs["records"]
+            assert len(records) == 1
+            assert records[0]["datetime_utc"] == datetime(2026, 10, 20, 12, 0, tzinfo=UTC)
+            assert records[0]["exchange_actual_pse"] == pytest.approx(400.0)
+            assert records[0]["resload_actual_pse"] == pytest.approx(15000.0)
 
     def test_fetch_and_save_oze_forecasts_joins_hourly_demand(self):
         fake_http = MagicMock()
@@ -466,8 +465,6 @@ class TestPseApi:
                 }
             ]
         }
-        fake_session = MagicMock()
-        fake_session.query.return_value.filter.return_value.all.return_value = []
         demand_map = {datetime(2026, 10, 20, 12, 0, tzinfo=UTC): 19000.0}
 
         with (
@@ -480,16 +477,18 @@ class TestPseApi:
                 return_value=demand_map,
             ),
             patch(
-                "energy_dash.features.power_system.etl.SessionLocal",
-                return_value=fake_session,
-            ),
+                "energy_dash.features.power_system.etl.postgres_upsert",
+                return_value=1,
+            ) as mock_upsert,
             patch("energy_dash.features.power_system.etl.time.sleep"),
         ):
             fetch_and_save_oze(start_date="2026-10-20", end_date="2026-10-20")
-            added = fake_session.add.call_args[0][0]
-            assert added.issue_datetime_utc == datetime(2026, 10, 20, 12, 0, tzinfo=UTC)
-            assert added.demand_fcst_pse == pytest.approx(19000.0)
-            assert added.resload_fcst_pse == pytest.approx(15000.0)
+            mock_upsert.assert_called_once()
+            records = mock_upsert.call_args.kwargs["records"]
+            assert len(records) == 1
+            assert records[0]["issue_datetime_utc"] == datetime(2026, 10, 20, 12, 0, tzinfo=UTC)
+            assert records[0]["demand_fcst_pse"] == pytest.approx(19000.0)
+            assert records[0]["resload_fcst_pse"] == pytest.approx(15000.0)
 
 
 class TestNewsRssAndDigest:

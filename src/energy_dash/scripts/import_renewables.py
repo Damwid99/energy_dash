@@ -2,10 +2,9 @@ import sys
 from pathlib import Path
 
 import pandas as pd
-from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
 
-from energy_dash.core.db import Base, SessionLocal, engine
+from energy_dash.core.db import Base, SessionLocal, engine, postgres_upsert
 from energy_dash.features.assets.models import RenewableFarm, RenewableGeneration
 
 BASE_DIR = Path(__file__).resolve().parents[3]
@@ -153,31 +152,14 @@ def load_csv(path: Path, farm_id: int) -> int:
 
     records = rows.to_dict(orient="records")
 
-    with SessionLocal() as session:
-        batch_size = 1000
+    records_len = postgres_upsert(
+        RenewableGeneration,
+        records=records,
+        index_elements=["farm_id", "datetime_utc"],
+        update_columns=["generation_mwh", "generation_forecast_mwh", "source_file"],
+    )
 
-        for start in range(0, len(records), batch_size):
-            batch = records[start : start + batch_size]
-
-            statement = insert(RenewableGeneration).values(batch)
-
-            statement = statement.on_conflict_do_update(
-                index_elements=[
-                    RenewableGeneration.farm_id,
-                    RenewableGeneration.datetime_utc,
-                ],
-                set_={
-                    "generation_mwh": statement.excluded.generation_mwh,
-                    "generation_forecast_mwh": statement.excluded.generation_forecast_mwh,
-                    "source_file": statement.excluded.source_file,
-                },
-            )
-
-            session.execute(statement)
-
-        session.commit()
-
-    return len(records)
+    return records_len
 
 
 def main() -> None:
